@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -176,21 +176,10 @@ export function RelatedCalls({
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [windowSec, setWindowSec] = useState(120);
-  const [debouncedWindow, setDebouncedWindow] = useState(120);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-
-  // Debounce the slider so we don't fire on every drag step
-  useEffect(() => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => setDebouncedWindow(windowSec), 500);
-    return () => clearTimeout(timerRef.current);
-  }, [windowSec]);
-
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    relatedCalls(callId, callManagerId, debouncedWindow)
+    relatedCalls(callId, callManagerId)
       .then((data) => {
         if (!cancelled) {
           setResults(data.results);
@@ -206,7 +195,7 @@ export function RelatedCalls({
     return () => {
       cancelled = true;
     };
-  }, [callId, callManagerId, debouncedWindow]);
+  }, [callId, callManagerId]);
 
   const flow = useMemo(
     () => (results.length > 0 ? buildCallFlow(primaryCdr, results) : []),
@@ -269,28 +258,9 @@ export function RelatedCalls({
       )}
 
       {/* Related call legs */}
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold">
-          Related Calls ({results.length})
-        </h3>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-muted-foreground">Window:</span>
-          <input
-            type="range"
-            min={30}
-            max={600}
-            step={30}
-            value={windowSec}
-            onChange={(e) => setWindowSec(parseInt(e.target.value, 10))}
-            className="w-32 accent-primary"
-          />
-          <span className="text-xs text-muted-foreground w-12">
-            {windowSec >= 60
-              ? `${Math.floor(windowSec / 60)}m${windowSec % 60 ? ` ${windowSec % 60}s` : ""}`
-              : `${windowSec}s`}
-          </span>
-        </div>
-      </div>
+      <h3 className="text-lg font-semibold mb-4">
+        Related Calls ({results.length})
+      </h3>
       <div className="space-y-2">
         {results.map((r) => {
           const isConnected = r.datetimeconnect != null;
