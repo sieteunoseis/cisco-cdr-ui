@@ -14,10 +14,13 @@ interface ResultRowProps {
 
 export function isRecordingLeg(result: CdrResult): boolean {
   const calling = result.callingpartynumber || "";
+  const called = result.finalcalledpartynumber || "";
   const origDevice = result.origdevicename || "";
   const destDevice = result.destdevicename || "";
+  const bib = /^b\d{5,}/;
   return (
-    /^b\d{10,}/.test(calling) ||
+    bib.test(calling) ||
+    bib.test(called) ||
     /Inform|Record|BIB/i.test(origDevice) ||
     /Inform|Record|BIB/i.test(destDevice)
   );
