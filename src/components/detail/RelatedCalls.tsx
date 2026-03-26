@@ -14,6 +14,7 @@ interface RelatedCallsProps {
 interface FlowStep {
   label: string;
   detail: string;
+  action: string;
   type: "device" | "trunk" | "cti" | "gateway";
 }
 
@@ -30,6 +31,48 @@ function mapDeviceType(axlType: string | null | undefined): FlowStep["type"] {
   }
 }
 
+function describeAction(
+  leg: any,
+  type: FlowStep["type"],
+  isOrig: boolean,
+  prevType: FlowStep["type"] | null,
+  isFirst: boolean,
+  isLast: boolean,
+  originalDialed: string | null,
+): string {
+  const cause = leg.destcause_description || "";
+  const called = leg.finalcalledpartynumber || "";
+  const origDialed = leg.originalcalledpartynumber || "";
+
+  if (isOrig && isFirst && type === "gateway") return "Inbound call";
+  if (isOrig && isFirst && type === "device") {
+    if (originalDialed && originalDialed !== called) {
+      return `Dialed ${originalDialed}`;
+    }
+    return called ? `Dialed ${called}` : "Originated call";
+  }
+  if (isOrig && !isFirst && type === "device") {
+    if (originalDialed && origDialed !== called) {
+      return `Dialed ${originalDialed}`;
+    }
+    return "Answered";
+  }
+
+  if (!isOrig) {
+    if (type === "gateway") return "Routed to gateway";
+    if (type === "trunk") {
+      if (cause === "Call split") return "Call split to trunk";
+      return "Routed to trunk";
+    }
+    if (type === "cti") return "Routed to CTI";
+    if (isLast && type === "device") return "Delivered to agent";
+    if (type === "device" && prevType === "trunk") return "Delivered";
+    return "Connected";
+  }
+
+  return "";
+}
+
 function buildCallFlow(primaryCdr: any, related: any[]): FlowStep[] {
   const allLegs = [primaryCdr, ...related].sort(
     (a, b) =>
@@ -40,9 +83,8 @@ function buildCallFlow(primaryCdr: any, related: any[]): FlowStep[] {
   const steps: FlowStep[] = [];
   const seen = new Set<string>();
 
-  // Find the original dialed number from the first leg
   const firstLeg = allLegs[0];
-  const originalDialed = firstLeg?.originalcalledpartynumber;
+  const originalDialed = firstLeg?.originalcalledpartynumber || null;
 
   for (let i = 0; i < allLegs.length; i++) {
     const leg = allLegs[i];
@@ -52,37 +94,51 @@ function buildCallFlow(primaryCdr: any, related: any[]): FlowStep[] {
     const destDesc = leg.dest_device_description || destName;
     const caller = leg.callingpartynumber || "";
     const called = leg.finalcalledpartynumber || "";
+    const prevType = steps.length > 0 ? steps[steps.length - 1].type : null;
 
-    // Add caller as first step
     if (origName && !seen.has(origName)) {
       seen.add(origName);
       const type = mapDeviceType(leg.orig_device_type);
       const isFirst = steps.length === 0;
-      let detail = `${caller ? caller + " • " : ""}${origName}`;
-      if (isFirst && originalDialed && originalDialed !== called) {
-        detail += ` → dialed ${originalDialed}`;
-      }
+      const action = describeAction(
+        leg,
+        type,
+        true,
+        prevType,
+        isFirst,
+        false,
+        originalDialed,
+      );
       steps.push({
         label: type === "gateway" ? caller || origName : origDesc,
-        detail,
+        detail: `${caller ? caller + " • " : ""}${origName}`,
+        action,
         type,
       });
     }
 
-    // Add destination
     if (destName && !seen.has(destName)) {
       seen.add(destName);
       const type = mapDeviceType(leg.dest_device_type);
-      // Add routing context
-      let context = "";
-      if (leg.lastredirectdn && leg.lastredirectdn !== called) {
-        context = ` (redirected from ${leg.lastredirectdn})`;
-      }
       const isLastLeg = i === allLegs.length - 1;
+      const action = describeAction(
+        leg,
+        type,
+        false,
+        prevType,
+        false,
+        isLastLeg,
+        originalDialed,
+      );
+      let detail = `${called ? called + " • " : ""}${destName}`;
+      if (leg.lastredirectdn) {
+        detail += ` (via ${leg.lastredirectdn})`;
+      }
       steps.push({
         label: destDesc,
-        detail: `${called ? called + " • " : ""}${destName}${context}`,
-        type: isLastLeg && type === "device" ? "device" : type,
+        detail,
+        action,
+        type,
       });
     }
   }
@@ -179,6 +235,11 @@ export function RelatedCalls({
                 <div
                   className={`rounded-lg border ${stepBorderColor(step.type)} px-3 py-2 mb-1 flex-1`}
                 >
+                  {step.action && (
+                    <p className="text-xs font-medium text-muted-foreground mb-0.5">
+                      {step.action}
+                    </p>
+                  )}
                   <span className="text-sm font-medium">{step.label}</span>
                   <p className="text-xs text-muted-foreground">{step.detail}</p>
                 </div>
