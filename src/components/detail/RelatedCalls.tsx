@@ -14,11 +14,23 @@ interface RelatedCallsProps {
 interface FlowStep {
   label: string;
   detail: string;
-  type: "device" | "trunk" | "queue" | "external";
+  type: "device" | "trunk" | "cti" | "gateway";
+}
+
+function mapDeviceType(axlType: string | null | undefined): FlowStep["type"] {
+  switch (axlType) {
+    case "trunk":
+      return "trunk";
+    case "cti":
+      return "cti";
+    case "gateway":
+      return "gateway";
+    default:
+      return "device";
+  }
 }
 
 function buildCallFlow(primaryCdr: any, related: any[]): FlowStep[] {
-  // Sort all legs chronologically
   const allLegs = [primaryCdr, ...related].sort(
     (a, b) =>
       new Date(a.datetimeorigination).getTime() -
@@ -36,38 +48,24 @@ function buildCallFlow(primaryCdr: any, related: any[]): FlowStep[] {
     const caller = leg.callingpartynumber || "";
     const called = leg.finalcalledpartynumber || "";
 
-    // Classify orig device
     if (origName && !seen.has(origName)) {
       seen.add(origName);
-      const type = classifyDevice(origName);
+      const type = mapDeviceType(leg.orig_device_type);
+      const typeLabel = type === "device" ? "" : ` • ${type.toUpperCase()}`;
       steps.push({
-        label: type === "external" ? caller : origDesc,
-        detail:
-          type === "external"
-            ? "External caller"
-            : type === "trunk"
-              ? origName
-              : caller
-                ? `${caller} • ${origName}`
-                : origName,
+        label: type === "gateway" ? caller || origName : origDesc,
+        detail: `${caller ? caller + " • " : ""}${origName}${typeLabel}`,
         type,
       });
     }
 
-    // Classify dest device
     if (destName && !seen.has(destName)) {
       seen.add(destName);
-      const type = classifyDevice(destName);
+      const type = mapDeviceType(leg.dest_device_type);
+      const typeLabel = type === "device" ? "" : ` • ${type.toUpperCase()}`;
       steps.push({
-        label: type === "queue" ? destName : destDesc,
-        detail:
-          type === "queue"
-            ? `Queue/CTI • ${called}`
-            : type === "trunk"
-              ? destName
-              : called
-                ? `${called} • ${destName}`
-                : destName,
+        label: type === "cti" ? destName : destDesc,
+        detail: `${called ? called + " • " : ""}${destName}${typeLabel}`,
         type,
       });
     }
@@ -76,23 +74,13 @@ function buildCallFlow(primaryCdr: any, related: any[]): FlowStep[] {
   return steps;
 }
 
-function classifyDevice(
-  name: string,
-): "external" | "trunk" | "queue" | "device" {
-  if (/^S\d+\/SU\d+\/DS\d+/.test(name) || /vgw\d+/i.test(name))
-    return "external";
-  if (/SIP-Trunk|SIPTrunk|trunk/i.test(name)) return "trunk";
-  if (/UCCE|CVP|CTI|RoutePoint/i.test(name)) return "queue";
-  return "device";
-}
-
 function stepColor(type: FlowStep["type"]): string {
   switch (type) {
-    case "external":
+    case "gateway":
       return "bg-green-500";
     case "trunk":
       return "bg-yellow-500";
-    case "queue":
+    case "cti":
       return "bg-blue-500";
     case "device":
       return "bg-primary";
@@ -101,11 +89,11 @@ function stepColor(type: FlowStep["type"]): string {
 
 function stepBorderColor(type: FlowStep["type"]): string {
   switch (type) {
-    case "external":
+    case "gateway":
       return "border-green-500/30";
     case "trunk":
       return "border-yellow-500/30";
-    case "queue":
+    case "cti":
       return "border-blue-500/30";
     case "device":
       return "border-border";
@@ -183,13 +171,13 @@ export function RelatedCalls({
           </div>
           <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-green-500" /> External
+              <span className="h-2 w-2 rounded-full bg-green-500" /> Gateway
             </span>
             <span className="flex items-center gap-1">
               <span className="h-2 w-2 rounded-full bg-yellow-500" /> Trunk
             </span>
             <span className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-blue-500" /> Queue/CTI
+              <span className="h-2 w-2 rounded-full bg-blue-500" /> CTI
             </span>
             <span className="flex items-center gap-1">
               <span className="h-2 w-2 rounded-full bg-primary" /> Device
