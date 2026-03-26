@@ -73,7 +73,7 @@ export function AdvancedSearch({ onSearch, loading }: AdvancedSearchProps) {
               Calling Number (from)
             </label>
             <Input
-              placeholder="5034947355"
+              placeholder=""
               value={calling}
               onChange={(e) => setCalling(e.target.value)}
             />
@@ -83,7 +83,7 @@ export function AdvancedSearch({ onSearch, loading }: AdvancedSearchProps) {
               Called Number (to)
             </label>
             <Input
-              placeholder="5035721070"
+              placeholder=""
               value={called}
               onChange={(e) => setCalled(e.target.value)}
             />
@@ -93,7 +93,7 @@ export function AdvancedSearch({ onSearch, loading }: AdvancedSearchProps) {
               Device Name
             </label>
             <Input
-              placeholder="SEP5067AEE1151A"
+              placeholder="e.g. SEPxxxxxxxxxxxx"
               value={device}
               onChange={(e) => setDevice(e.target.value)}
             />
@@ -103,7 +103,7 @@ export function AdvancedSearch({ onSearch, loading }: AdvancedSearchProps) {
               Cause Code
             </label>
             <Input
-              placeholder="16"
+              placeholder="e.g. 16"
               value={cause}
               onChange={(e) => setCause(e.target.value)}
             />
