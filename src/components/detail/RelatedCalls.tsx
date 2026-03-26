@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,9 +8,115 @@ import { formatDurationFromInterval, formatTimestamp } from "@/lib/format";
 interface RelatedCallsProps {
   callId: string;
   callManagerId?: string;
+  primaryCdr: any;
 }
 
-export function RelatedCalls({ callId, callManagerId }: RelatedCallsProps) {
+interface FlowStep {
+  label: string;
+  detail: string;
+  type: "device" | "trunk" | "queue" | "external";
+}
+
+function buildCallFlow(primaryCdr: any, related: any[]): FlowStep[] {
+  // Sort all legs chronologically
+  const allLegs = [primaryCdr, ...related].sort(
+    (a, b) =>
+      new Date(a.datetimeorigination).getTime() -
+      new Date(b.datetimeorigination).getTime(),
+  );
+
+  const steps: FlowStep[] = [];
+  const seen = new Set<string>();
+
+  for (const leg of allLegs) {
+    const origName = leg.origdevicename || "";
+    const destName = leg.destdevicename || "";
+    const origDesc = leg.orig_device_description || origName;
+    const destDesc = leg.dest_device_description || destName;
+    const caller = leg.callingpartynumber || "";
+    const called = leg.finalcalledpartynumber || "";
+
+    // Classify orig device
+    if (origName && !seen.has(origName)) {
+      seen.add(origName);
+      const type = classifyDevice(origName);
+      steps.push({
+        label: type === "external" ? caller : origDesc,
+        detail:
+          type === "external"
+            ? "External caller"
+            : type === "trunk"
+              ? origName
+              : caller
+                ? `${caller} • ${origName}`
+                : origName,
+        type,
+      });
+    }
+
+    // Classify dest device
+    if (destName && !seen.has(destName)) {
+      seen.add(destName);
+      const type = classifyDevice(destName);
+      steps.push({
+        label: type === "queue" ? destName : destDesc,
+        detail:
+          type === "queue"
+            ? `Queue/CTI • ${called}`
+            : type === "trunk"
+              ? destName
+              : called
+                ? `${called} • ${destName}`
+                : destName,
+        type,
+      });
+    }
+  }
+
+  return steps;
+}
+
+function classifyDevice(
+  name: string,
+): "external" | "trunk" | "queue" | "device" {
+  if (/^S\d+\/SU\d+\/DS\d+/.test(name) || /vgw\d+/i.test(name))
+    return "external";
+  if (/SIP-Trunk|SIPTrunk|trunk/i.test(name)) return "trunk";
+  if (/UCCE|CVP|CTI|RoutePoint/i.test(name)) return "queue";
+  return "device";
+}
+
+function stepColor(type: FlowStep["type"]): string {
+  switch (type) {
+    case "external":
+      return "bg-green-500";
+    case "trunk":
+      return "bg-yellow-500";
+    case "queue":
+      return "bg-blue-500";
+    case "device":
+      return "bg-primary";
+  }
+}
+
+function stepBorderColor(type: FlowStep["type"]): string {
+  switch (type) {
+    case "external":
+      return "border-green-500/30";
+    case "trunk":
+      return "border-yellow-500/30";
+    case "queue":
+      return "border-blue-500/30";
+    case "device":
+      return "border-border";
+  }
+}
+
+export function RelatedCalls({
+  callId,
+  callManagerId,
+  primaryCdr,
+}: RelatedCallsProps) {
   const navigate = useNavigate();
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,12 +143,62 @@ export function RelatedCalls({ callId, callManagerId }: RelatedCallsProps) {
     };
   }, [callId, callManagerId]);
 
+  const flow = useMemo(
+    () => (results.length > 0 ? buildCallFlow(primaryCdr, results) : []),
+    [primaryCdr, results],
+  );
+
   if (loading) return null;
   if (error) return null;
   if (results.length === 0) return null;
 
   return (
     <Card className="p-6">
+      {/* Assumed call flow */}
+      {flow.length > 1 && (
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold mb-1">Assumed Call Flow</h3>
+          <p className="text-xs text-muted-foreground mb-4">
+            Reconstructed from CDR legs — may not reflect exact routing
+          </p>
+          <div className="space-y-0">
+            {flow.map((step, i) => (
+              <div key={i} className="flex items-start gap-3">
+                <div className="flex flex-col items-center pt-1">
+                  <div
+                    className={`h-3 w-3 rounded-full ${stepColor(step.type)}`}
+                  />
+                  {i < flow.length - 1 && (
+                    <div className="w-0.5 h-8 bg-border" />
+                  )}
+                </div>
+                <div
+                  className={`rounded-lg border ${stepBorderColor(step.type)} px-3 py-2 mb-1 flex-1`}
+                >
+                  <span className="text-sm font-medium">{step.label}</span>
+                  <p className="text-xs text-muted-foreground">{step.detail}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-green-500" /> External
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-yellow-500" /> Trunk
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-blue-500" /> Queue/CTI
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-primary" /> Device
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Related call legs */}
       <h3 className="text-lg font-semibold mb-4">
         Related Calls ({results.length})
       </h3>

@@ -49,7 +49,11 @@ export function CallDetailPage() {
       <EnrichmentCard cdr={primary} />
       <CallPath legs={cdr} />
       <QualityCard cmr={cmr} />
-      <RelatedCalls callId={callId!} callManagerId={callManagerId} />
+      <RelatedCalls
+        callId={callId!}
+        callManagerId={callManagerId}
+        primaryCdr={primary}
+      />
       <CollectLogs
         callId={callId!}
         callManagerId={callManagerId}

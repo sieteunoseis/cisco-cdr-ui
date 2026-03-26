@@ -5,7 +5,6 @@ import {
   formatRelativeTime,
   formatTimestamp,
 } from "@/lib/format";
-import { mosToGrade, gradeBadgeVariant } from "@/lib/quality";
 import type { CdrResult } from "@/hooks/useSearch";
 
 interface ResultRowProps {
@@ -50,7 +49,6 @@ export function isConference(result: CdrResult): boolean {
 export function ResultRow({ result }: ResultRowProps) {
   const navigate = useNavigate();
   const isConnected = result.datetimeconnect != null;
-  const grade = mosToGrade(null);
   const isRecording = isRecordingLeg(result);
   const transfer = !isRecording && isTransfer(result);
   const conference = !isRecording && isConference(result);
