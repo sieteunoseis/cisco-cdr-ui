@@ -127,11 +127,6 @@ export function ResultRow({ result }: ResultRowProps) {
             ? "Connected"
             : result.destcause_description || `Cause ${result.destcause_value}`}
         </Badge>
-        <Badge variant={gradeBadgeVariant(grade)}>
-          {grade === "ungraded"
-            ? "Ungraded"
-            : grade.charAt(0).toUpperCase() + grade.slice(1)}
-        </Badge>
       </div>
     </div>
   );
