@@ -13,8 +13,7 @@ export function SearchPage() {
   const handleSearch = useCallback(
     (query: string) => {
       search({
-        calling: query,
-        called: query,
+        number: query,
         last: timeRange,
         limit: String(limit),
       });
