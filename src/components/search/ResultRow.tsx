@@ -47,6 +47,9 @@ export function ResultRow({ result }: ResultRowProps) {
           {result.orig_device_description || result.origdevicename}
           {" → "}
           {result.dest_device_description || result.destdevicename}
+          <span className="ml-3 opacity-50">
+            Call ID: {result.globalcallid_callid}
+          </span>
         </div>
       </div>
       <div className="flex items-center gap-4 ml-4 shrink-0">

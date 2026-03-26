@@ -32,6 +32,10 @@ export function CallHeader({ cdr }: CallHeaderProps) {
           <p className="text-muted-foreground mt-1">
             {formatTimestamp(cdr.datetimeorigination)} —{" "}
             {formatDurationFromInterval(cdr.duration)}
+            <span className="ml-3 opacity-50">
+              Call ID: {cdr.globalcallid_callid} • CM:{" "}
+              {cdr.globalcallid_callmanagerid} • {cdr.globalcallid_clusterid}
+            </span>
           </p>
         </div>
         <Badge variant={isConnected ? "default" : "destructive"}>
