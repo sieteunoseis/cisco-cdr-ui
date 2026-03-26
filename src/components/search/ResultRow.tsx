@@ -36,13 +36,18 @@ export function ResultRow({ result }: ResultRowProps) {
             {result.finalcalledpartynumber || "N/A"}
           </span>
         </div>
-        {(result.orig_device_description || result.dest_device_description) && (
-          <div className="mt-1 text-xs text-muted-foreground truncate">
-            {result.orig_device_description || result.origdevicename}
-            {" → "}
-            {result.dest_device_description || result.destdevicename}
-          </div>
-        )}
+        <div className="mt-1 text-xs text-muted-foreground truncate">
+          {result.originalcalledpartynumber &&
+            result.originalcalledpartynumber !==
+              result.finalcalledpartynumber && (
+              <span className="mr-3">
+                Dialed: {result.originalcalledpartynumber}
+              </span>
+            )}
+          {result.orig_device_description || result.origdevicename}
+          {" → "}
+          {result.dest_device_description || result.destdevicename}
+        </div>
       </div>
       <div className="flex items-center gap-4 ml-4 shrink-0">
         <div className="text-right">
