@@ -40,7 +40,12 @@ function buildCallFlow(primaryCdr: any, related: any[]): FlowStep[] {
   const steps: FlowStep[] = [];
   const seen = new Set<string>();
 
-  for (const leg of allLegs) {
+  // Find the original dialed number from the first leg
+  const firstLeg = allLegs[0];
+  const originalDialed = firstLeg?.originalcalledpartynumber;
+
+  for (let i = 0; i < allLegs.length; i++) {
+    const leg = allLegs[i];
     const origName = leg.origdevicename || "";
     const destName = leg.destdevicename || "";
     const origDesc = leg.orig_device_description || origName;
@@ -48,25 +53,36 @@ function buildCallFlow(primaryCdr: any, related: any[]): FlowStep[] {
     const caller = leg.callingpartynumber || "";
     const called = leg.finalcalledpartynumber || "";
 
+    // Add caller as first step
     if (origName && !seen.has(origName)) {
       seen.add(origName);
       const type = mapDeviceType(leg.orig_device_type);
-      const typeLabel = type === "device" ? "" : ` • ${type.toUpperCase()}`;
+      const isFirst = steps.length === 0;
+      let detail = `${caller ? caller + " • " : ""}${origName}`;
+      if (isFirst && originalDialed && originalDialed !== called) {
+        detail += ` → dialed ${originalDialed}`;
+      }
       steps.push({
         label: type === "gateway" ? caller || origName : origDesc,
-        detail: `${caller ? caller + " • " : ""}${origName}${typeLabel}`,
+        detail,
         type,
       });
     }
 
+    // Add destination
     if (destName && !seen.has(destName)) {
       seen.add(destName);
       const type = mapDeviceType(leg.dest_device_type);
-      const typeLabel = type === "device" ? "" : ` • ${type.toUpperCase()}`;
+      // Add routing context
+      let context = "";
+      if (leg.lastredirectdn && leg.lastredirectdn !== called) {
+        context = ` (redirected from ${leg.lastredirectdn})`;
+      }
+      const isLastLeg = i === allLegs.length - 1;
       steps.push({
-        label: type === "cti" ? destName : destDesc,
-        detail: `${called ? called + " • " : ""}${destName}${typeLabel}`,
-        type,
+        label: destDesc,
+        detail: `${called ? called + " • " : ""}${destName}${context}`,
+        type: isLastLeg && type === "device" ? "device" : type,
       });
     }
   }

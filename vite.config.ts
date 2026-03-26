@@ -16,6 +16,7 @@ export default defineConfig({
       "/api": {
         target: process.env.VITE_API_URL || "https://cucm-cdr.tuce.ohsu.edu",
         changeOrigin: true,
+        secure: false,
       },
     },
   },
