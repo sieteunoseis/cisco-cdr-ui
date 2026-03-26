@@ -79,12 +79,12 @@ export function ResultRow({ result }: ResultRowProps) {
             </Badge>
           )}
           {transfer && (
-            <Badge variant="secondary" className="text-xs ml-2">
+            <Badge className="text-xs ml-2 bg-blue-500/15 text-blue-500 border-blue-500/25">
               Transfer
             </Badge>
           )}
           {conference && (
-            <Badge variant="secondary" className="text-xs ml-2">
+            <Badge className="text-xs ml-2 bg-purple-500/15 text-purple-500 border-purple-500/25">
               Conference
             </Badge>
           )}
