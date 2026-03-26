@@ -176,11 +176,12 @@ export function RelatedCalls({
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [windowSec, setWindowSec] = useState(120);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    relatedCalls(callId, callManagerId)
+    relatedCalls(callId, callManagerId, windowSec)
       .then((data) => {
         if (!cancelled) {
           setResults(data.results);
@@ -196,7 +197,7 @@ export function RelatedCalls({
     return () => {
       cancelled = true;
     };
-  }, [callId, callManagerId]);
+  }, [callId, callManagerId, windowSec]);
 
   const flow = useMemo(
     () => (results.length > 0 ? buildCallFlow(primaryCdr, results) : []),
@@ -259,12 +260,28 @@ export function RelatedCalls({
       )}
 
       {/* Related call legs */}
-      <h3 className="text-lg font-semibold mb-4">
-        Related Calls ({results.length})
-      </h3>
-      <p className="text-xs text-muted-foreground mb-3">
-        Other call legs involving the same numbers within 5 minutes
-      </p>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold">
+          Related Calls ({results.length})
+        </h3>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-muted-foreground">Window:</span>
+          <input
+            type="range"
+            min={30}
+            max={600}
+            step={30}
+            value={windowSec}
+            onChange={(e) => setWindowSec(parseInt(e.target.value, 10))}
+            className="w-32 accent-primary"
+          />
+          <span className="text-xs text-muted-foreground w-12">
+            {windowSec >= 60
+              ? `${Math.floor(windowSec / 60)}m${windowSec % 60 ? ` ${windowSec % 60}s` : ""}`
+              : `${windowSec}s`}
+          </span>
+        </div>
+      </div>
       <div className="space-y-2">
         {results.map((r) => {
           const isConnected = r.datetimeconnect != null;

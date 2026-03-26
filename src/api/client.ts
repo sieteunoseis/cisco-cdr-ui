@@ -57,10 +57,17 @@ export function collectLogs(callId: string, callManagerId?: string) {
   });
 }
 
-export function relatedCalls(callId: string, callManagerId?: string) {
-  const qs = callManagerId ? `?callmanager_id=${callManagerId}` : "";
+export function relatedCalls(
+  callId: string,
+  callManagerId?: string,
+  windowSeconds?: number,
+) {
+  const params = new URLSearchParams();
+  if (callManagerId) params.set("callmanager_id", callManagerId);
+  if (windowSeconds) params.set("window", String(windowSeconds));
+  const qs = params.toString();
   return apiFetch<{ count: number; results: any[] }>(
-    `/api/v1/cdr/related/${callId}${qs}`,
+    `/api/v1/cdr/related/${callId}${qs ? `?${qs}` : ""}`,
   );
 }
 
