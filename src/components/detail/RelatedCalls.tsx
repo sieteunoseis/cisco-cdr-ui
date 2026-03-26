@@ -102,7 +102,7 @@ function buildCallFlow(primaryCdr: any, related: any[]): FlowStep[] {
       const isFirst = steps.length === 0;
       const action = describeAction(leg, type, true, prevType, isFirst, false);
       steps.push({
-        label: type === "gateway" ? caller || origName : origDesc,
+        label: origDesc || origName,
         detail: `${caller ? caller + " • " : ""}${origName}`,
         action,
         type,
@@ -122,7 +122,11 @@ function buildCallFlow(primaryCdr: any, related: any[]): FlowStep[] {
         isLastLeg,
       );
       let detail = `${called ? called + " • " : ""}${destName}`;
-      if (leg.lastredirectdn) {
+      if (
+        leg.lastredirectdn &&
+        leg.lastredirectdn !== called &&
+        leg.lastredirectdn !== caller
+      ) {
         detail += ` (via ${leg.lastredirectdn})`;
       }
       steps.push({
