@@ -2,6 +2,10 @@ import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { SearchBar } from "@/components/search/SearchBar";
 import { TimeRange } from "@/components/search/TimeRange";
+import {
+  AdvancedSearch,
+  type AdvancedSearchParams,
+} from "@/components/search/AdvancedSearch";
 import { ResultRow, isRecordingLeg } from "@/components/search/ResultRow";
 import { useSearch } from "@/hooks/useSearch";
 import { Button } from "@/components/ui/button";
@@ -40,6 +44,18 @@ export function SearchPage() {
     [search, timeRange, limit, setSearchParams],
   );
 
+  const handleAdvancedSearch = useCallback(
+    (params: AdvancedSearchParams) => {
+      const clean: Record<string, string> = {};
+      for (const [k, v] of Object.entries(params)) {
+        if (v) clean[k] = v;
+      }
+      lastSearchRef.current = clean;
+      search(clean);
+    },
+    [search],
+  );
+
   // Re-run search when returning via back button
   useEffect(() => {
     if (initialQuery && results.length === 0 && !loading) {
@@ -72,15 +88,18 @@ export function SearchPage() {
         />
         <div className="flex items-center justify-between">
           <TimeRange selected={timeRange} onSelect={setTimeRange} />
-          <Button
-            variant={autoRefresh ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => setAutoRefresh(!autoRefresh)}
-            disabled={!lastSearchRef.current}
-          >
-            {autoRefresh ? "Auto-refresh on (30s)" : "Auto-refresh"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={autoRefresh ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setAutoRefresh(!autoRefresh)}
+              disabled={!lastSearchRef.current}
+            >
+              {autoRefresh ? "Auto-refresh on (30s)" : "Auto-refresh"}
+            </Button>
+          </div>
         </div>
+        <AdvancedSearch onSearch={handleAdvancedSearch} loading={loading} />
       </div>
       {error && (
         <div className="rounded-lg bg-destructive/10 p-4 text-destructive text-sm">
