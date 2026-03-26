@@ -23,6 +23,12 @@ export function CallHeader({ cdr }: CallHeaderProps) {
             <span className="text-muted-foreground mx-3">→</span>
             {cdr.finalcalledpartynumber || "N/A"}
           </h1>
+          {cdr.originalcalledpartynumber &&
+            cdr.originalcalledpartynumber !== cdr.finalcalledpartynumber && (
+              <p className="text-lg font-mono text-muted-foreground mt-1">
+                Originally dialed: {cdr.originalcalledpartynumber}
+              </p>
+            )}
           <p className="text-muted-foreground mt-1">
             {formatTimestamp(cdr.datetimeorigination)} —{" "}
             {formatDurationFromInterval(cdr.duration)}
