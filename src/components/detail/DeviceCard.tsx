@@ -107,18 +107,26 @@ function DevicePanel({
                 {info.activeLoadId || "N/A"}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">DN</span>
-              <span className="font-mono text-xs">
-                {info.dirNumber
-                  ? info.dirNumber
-                      .split(",")
-                      .map((dn: string) =>
-                        dn.replace(/-Registered$/i, "").trim(),
-                      )
-                      .join(", ")
-                  : "N/A"}
-              </span>
+            <div className="col-span-2">
+              <span className="text-muted-foreground text-sm">DN</span>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {info.dirNumber ? (
+                  info.dirNumber
+                    .split(",")
+                    .map((dn: string) => dn.replace(/-Registered$/i, "").trim())
+                    .filter(Boolean)
+                    .map((dn: string, i: number) => (
+                      <span
+                        key={i}
+                        className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded"
+                      >
+                        {dn}
+                      </span>
+                    ))
+                ) : (
+                  <span className="text-sm">N/A</span>
+                )}
+              </div>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Description</span>
