@@ -84,6 +84,12 @@ export function relatedCalls(
   );
 }
 
+export function sqlSchema() {
+  return apiFetch<{
+    tables: Record<string, { name: string; type: string }[]>;
+  }>("/api/v1/cdr/sql/schema");
+}
+
 export function healthCheck() {
   return apiFetch<any>("/api/v1/health");
 }
