@@ -57,10 +57,8 @@ export function SqlVariables({ query, onResolvedQuery }: SqlVariablesProps) {
       if (!val) {
         resolved = resolved.replace(pattern, `:${v.name}`);
       } else {
-        // Wrap in quotes unless it's a pure number
-        const quoted = /^\d+(\.\d+)?$/.test(val)
-          ? val
-          : `'${val.replace(/'/g, "''")}'`;
+        // Always wrap in single quotes — Postgres will cast as needed
+        const quoted = `'${val.replace(/'/g, "''")}'`;
         resolved = resolved.replace(pattern, quoted);
       }
     }
