@@ -28,13 +28,50 @@ export function SearchPage() {
 
   const [timeRange, setTimeRange] = useState(initialTimeRange);
   const [limit, setLimit] = useState(100);
-  const [hideRecording, setHideRecording] = useState(true);
-  const [hideZeroDuration, setHideZeroDuration] = useState(false);
-  const [hideTransfer, setHideTransfer] = useState(false);
-  const [hideConference, setHideConference] = useState(false);
-  const [phonesOnly, setPhonesOnly] = useState(false);
+  const savedFilters = (() => {
+    try {
+      return JSON.parse(sessionStorage.getItem("cdr-filters") || "{}");
+    } catch {
+      return {};
+    }
+  })();
+  const [hideRecording, setHideRecording] = useState(
+    savedFilters.hideRecording ?? true,
+  );
+  const [hideZeroDuration, setHideZeroDuration] = useState(
+    savedFilters.hideZeroDuration ?? false,
+  );
+  const [hideTransfer, setHideTransfer] = useState(
+    savedFilters.hideTransfer ?? false,
+  );
+  const [hideConference, setHideConference] = useState(
+    savedFilters.hideConference ?? false,
+  );
+  const [phonesOnly, setPhonesOnly] = useState(
+    savedFilters.phonesOnly ?? false,
+  );
   const [showStarredOnly, setShowStarredOnly] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  // Persist filter state to sessionStorage
+  useEffect(() => {
+    sessionStorage.setItem(
+      "cdr-filters",
+      JSON.stringify({
+        hideRecording,
+        hideZeroDuration,
+        hideTransfer,
+        hideConference,
+        phonesOnly,
+      }),
+    );
+  }, [
+    hideRecording,
+    hideZeroDuration,
+    hideTransfer,
+    hideConference,
+    phonesOnly,
+  ]);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const lastSearchRef = useRef<Record<string, string> | null>(null);
   const { results, count, loading, error, search } = useSearch();
@@ -290,7 +327,26 @@ export function SearchPage() {
                   Export CSV
                 </Button>
               </div>
-              <div className="relative">
+              <div className="relative flex items-center gap-1">
+                {(hideRecording ||
+                  hideZeroDuration ||
+                  hideTransfer ||
+                  hideConference ||
+                  phonesOnly) && (
+                  <button
+                    onClick={() => {
+                      setHideRecording(false);
+                      setHideZeroDuration(false);
+                      setHideTransfer(false);
+                      setHideConference(false);
+                      setPhonesOnly(false);
+                    }}
+                    className="text-muted-foreground hover:text-foreground text-xs"
+                    title="Clear all filters"
+                  >
+                    ✕
+                  </button>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"
