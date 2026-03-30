@@ -132,7 +132,7 @@ export function SipLadder({
     if (fetched || !callManagerId) return;
     getSnapshot(callId, callManagerId, "sip-trace")
       .then((data) => {
-        if (data.messages && data.messages.length > 0) {
+        if (data && data.messages && data.messages.length > 0) {
           setMessages(data.messages);
           setMeta({
             count: data.count,
