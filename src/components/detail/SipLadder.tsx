@@ -235,10 +235,18 @@ export function SipLadder({
       )}
 
       {fetched && filtered.length === 0 && (
-        <p className="text-sm text-muted-foreground">
-          No SIP messages found for this call in {meta?.files_searched} trace
-          files.
-        </p>
+        <div className="text-sm text-muted-foreground space-y-1">
+          <p>
+            No call signaling found in {meta?.files_searched} trace files
+            {messages.length > 0 &&
+              ` (${messages.length} BLF/presence messages filtered)`}
+            .
+          </p>
+          <p className="text-xs">
+            The call may have been processed on a different CUCM node. Try
+            collecting traces with --all-nodes.
+          </p>
+        </div>
       )}
 
       {filtered.length > 0 && (
