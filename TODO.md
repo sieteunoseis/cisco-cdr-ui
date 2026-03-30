@@ -25,6 +25,7 @@
 - [x] Filters dropdown with persist across navigation
 - [x] CSV export from search results
 - [x] Time range re-runs search automatically
+- [ ] More advanced search fields (cause code ranges, codec, device pool, location)
 - [ ] Saved search filters (like saved SQL queries but for main search)
 - [ ] Bulk number search (paste a list of DNs, get all calls)
 - [ ] Time-of-day heatmap (when do most calls happen for a DN)
