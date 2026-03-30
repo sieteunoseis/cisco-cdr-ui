@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { sipLadder, getSnapshot } from "@/api/client";
@@ -183,13 +183,58 @@ export function SipLadder({
 
   const remoteIps = [...new Set(filtered.map((m) => m.remoteIp))];
   const ipLabels = buildIpLabels(cdrLegs);
-  const columns = ["CUCM", ...remoteIps];
+  const baseColumns = ["CUCM", ...remoteIps];
+
+  // Drag-and-drop column reordering
+  const [columnOrder, setColumnOrder] = useState<number[]>([]);
+  const dragIdx = useRef<number | null>(null);
+  const dragOverIdx = useRef<number | null>(null);
+
+  // Reset column order when columns change
+  useEffect(() => {
+    setColumnOrder(baseColumns.map((_, i) => i));
+  }, [baseColumns.length]);
+
+  const columns =
+    columnOrder.length === baseColumns.length
+      ? columnOrder.map((i) => baseColumns[i])
+      : baseColumns;
+
+  // Build a mapping from baseColumns index to display index
+  const displayOrder =
+    columnOrder.length === baseColumns.length
+      ? columnOrder
+      : baseColumns.map((_col, idx) => idx);
+  const baseToDisplay = new Map<number, number>();
+  displayOrder.forEach((baseIdx, displayIdx) => {
+    baseToDisplay.set(baseIdx, displayIdx);
+  });
+
   const columnLabels = columns.map((col, i) => {
-    if (i === 0) return col;
+    if (col === "CUCM") return col;
     const label = ipLabels.get(col);
     return label && label !== col ? `${label}\n${col}` : col;
   });
   const colWidth = 100 / columns.length;
+
+  const handleDragStart = (displayIndex: number) => {
+    dragIdx.current = displayIndex;
+  };
+
+  const handleDragOver = (e: React.DragEvent, displayIndex: number) => {
+    e.preventDefault();
+    dragOverIdx.current = displayIndex;
+  };
+
+  const handleDrop = (displayIndex: number) => {
+    if (dragIdx.current === null || dragIdx.current === displayIndex) return;
+    const newOrder = [...displayOrder];
+    const [moved] = newOrder.splice(dragIdx.current, 1);
+    newOrder.splice(displayIndex, 0, moved);
+    setColumnOrder(newOrder);
+    dragIdx.current = null;
+    dragOverIdx.current = null;
+  };
 
   return (
     <Card className="p-6">
@@ -258,14 +303,22 @@ export function SipLadder({
           </p>
 
           <div style={{ minWidth: `${Math.max(600, columns.length * 180)}px` }}>
-            {/* Column headers */}
+            {/* Column headers — draggable */}
             <div className="flex text-xs mb-1">
               <div className="w-28 shrink-0" />
               <div className="flex-1 flex">
                 {columnLabels.map((label, i) => (
                   <div
                     key={i}
-                    className="flex-1 text-center text-muted-foreground px-1 font-medium whitespace-pre-line leading-tight"
+                    draggable
+                    onDragStart={() => handleDragStart(i)}
+                    onDragOver={(e) => handleDragOver(e, i)}
+                    onDrop={() => handleDrop(i)}
+                    onDragEnd={() => {
+                      dragIdx.current = null;
+                      dragOverIdx.current = null;
+                    }}
+                    className="flex-1 text-center text-muted-foreground px-1 font-medium whitespace-pre-line leading-tight cursor-grab active:cursor-grabbing select-none hover:bg-accent/30 rounded transition-colors"
                   >
                     {label.split("\n").map((line, j) => (
                       <div
@@ -303,9 +356,21 @@ export function SipLadder({
             {/* Message rows */}
             {filtered.map((msg, i) => {
               const isExpanded = expanded === i;
-              const remoteIdx = remoteIps.indexOf(msg.remoteIp) + 1;
-              const srcIdx = msg.direction === "outgoing" ? 0 : remoteIdx;
-              const dstIdx = msg.direction === "outgoing" ? remoteIdx : 0;
+              // Map from base column index to current display position
+              const baseRemoteIdx = remoteIps.indexOf(msg.remoteIp) + 1;
+              const baseCucmIdx = 0;
+              const remoteDisplayIdx =
+                baseToDisplay.get(baseRemoteIdx) ?? baseRemoteIdx;
+              const cucmDisplayIdx =
+                baseToDisplay.get(baseCucmIdx) ?? baseCucmIdx;
+              const srcIdx =
+                msg.direction === "outgoing"
+                  ? cucmDisplayIdx
+                  : remoteDisplayIdx;
+              const dstIdx =
+                msg.direction === "outgoing"
+                  ? remoteDisplayIdx
+                  : cucmDisplayIdx;
               const leftIdx = Math.min(srcIdx, dstIdx);
               const rightIdx = Math.max(srcIdx, dstIdx);
               const goingRight = dstIdx > srcIdx;
