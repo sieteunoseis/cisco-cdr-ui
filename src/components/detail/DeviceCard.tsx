@@ -32,6 +32,13 @@ interface DeviceInfo {
   webPages: Record<string, string> | null;
 }
 
+// Safely render a value that might be an object from xml2js
+function str(val: any): string {
+  if (val == null) return "N/A";
+  if (typeof val === "object") return JSON.stringify(val);
+  return String(val);
+}
+
 function statusBadge(status: string) {
   if (status === "Registered")
     return (
@@ -123,16 +130,16 @@ function DevicePanel({
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">IP</span>
-              <span className="font-mono">{info.ip || "N/A"}</span>
+              <span className="font-mono">{str(info.ip)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Protocol</span>
-              <span>{info.protocol}</span>
+              <span>{str(info.protocol)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Firmware</span>
               <span className="font-mono text-xs">
-                {info.activeLoadId || "N/A"}
+                {str(info.activeLoadId)}
               </span>
             </div>
             <div className="col-span-2">
@@ -158,7 +165,7 @@ function DevicePanel({
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Description</span>
-              <span className="truncate ml-2">{info.description || "N/A"}</span>
+              <span className="truncate ml-2">{str(info.description)}</span>
             </div>
           </div>
 
