@@ -130,6 +130,13 @@
     @apply font-sans;
   }
 
+  /* Dark mode datetime picker */
+  .dark input[type="datetime-local"],
+  .dark input[type="date"],
+  .dark input[type="time"] {
+    color-scheme: dark;
+  }
+
   /* Custom scrollbars */
   ::-webkit-scrollbar {
     width: 8px;
