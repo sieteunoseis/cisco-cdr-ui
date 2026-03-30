@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { sipLadder, getSnapshot, type SipLadderJobStatus } from "@/api/client";
+import { sipLadder, getSnapshot } from "@/api/client";
 
 interface SipLadderProps {
   callId: string;
@@ -228,7 +228,7 @@ export function SipLadder({
     baseToDisplay.set(baseIdx, displayIdx);
   });
 
-  const columnLabels = columns.map((col, i) => {
+  const columnLabels = columns.map((col) => {
     if (col === "CUCM") return col;
     const label = ipLabels.get(col);
     return label && label !== col ? `${label}\n${col}` : col;
