@@ -51,6 +51,8 @@ interface SipLadderResult {
   callIds: string[];
   files_searched: number;
   timeWindow: { from: string; to: string };
+  cucmNode?: { hostname: string; ip: string | null };
+  ipDns?: Record<string, string>;
 }
 
 export interface SipLadderJobStatus {

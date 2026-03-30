@@ -125,6 +125,13 @@ export function SipLadder({
     files_searched: number;
   } | null>(cached?.meta || null);
 
+  const [cucmNode, setCucmNode] = useState<{
+    hostname: string;
+    ip: string | null;
+  } | null>(cached?.cucmNode || null);
+  const [ipDns, setIpDns] = useState<Record<string, string>>(
+    cached?.ipDns || {},
+  );
   const [fromSnapshot, setFromSnapshot] = useState(false);
   const [progress, setProgress] = useState<{
     status: string;
@@ -145,6 +152,8 @@ export function SipLadder({
             count: data.count,
             files_searched: data.files_searched,
           });
+          if (data.cucmNode) setCucmNode(data.cucmNode);
+          if (data.ipDns) setIpDns(data.ipDns);
           setFetched(true);
           setFromSnapshot(true);
         }
@@ -172,13 +181,20 @@ export function SipLadder({
         count: data.count,
         files_searched: data.files_searched,
       };
+      if (data.cucmNode) setCucmNode(data.cucmNode);
+      if (data.ipDns) setIpDns(data.ipDns);
       setMeta(newMeta);
       setFetched(true);
       setProgress(null);
       try {
         sessionStorage.setItem(
           cacheKey(callId, callManagerId),
-          JSON.stringify({ messages: data.messages, meta: newMeta }),
+          JSON.stringify({
+            messages: data.messages,
+            meta: newMeta,
+            cucmNode: data.cucmNode,
+            ipDns: data.ipDns,
+          }),
         );
       } catch {
         // sessionStorage full or unavailable — ignore
@@ -229,9 +245,19 @@ export function SipLadder({
   });
 
   const columnLabels = columns.map((col) => {
-    if (col === "CUCM") return col;
-    const label = ipLabels.get(col);
-    return label && label !== col ? `${label}\n${col}` : col;
+    if (col === "CUCM") {
+      if (cucmNode) {
+        return cucmNode.ip
+          ? `${cucmNode.hostname}\n${cucmNode.ip}`
+          : cucmNode.hostname;
+      }
+      return col;
+    }
+    // Try CDR label first, then DNS, then just IP
+    const cdrLabel = ipLabels.get(col);
+    const dnsLabel = ipDns[col];
+    const name = cdrLabel && cdrLabel !== col ? cdrLabel : dnsLabel || null;
+    return name ? `${name}\n${col}` : col;
   });
   const colWidth = 100 / columns.length;
 
