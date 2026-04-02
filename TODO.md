@@ -60,3 +60,5 @@
 - [x] Docker Hub CI auth
 - [x] Skip Docker build for markdown changes
 - [ ] cisco-risport Docker container fix (issue #3)
+- [ ] Legacy DB support — query netdb02-1.ohsu.edu:19491/netinfo for historical CDR (2025-03-29 to 2026-03-25, 70M rows, timestamp format vs our epoch bigint)
+- [ ] Drag-and-drop SIP ladder column reordering
