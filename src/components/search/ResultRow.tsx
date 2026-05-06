@@ -118,10 +118,10 @@ export function ResultRow({ result, starred, onToggleStar }: ResultRowProps) {
           <div className="text-sm font-medium">
             {formatDurationFromInterval(result.duration)}
           </div>
-          <div
-            className="text-xs text-muted-foreground"
-            title={formatTimestamp(result.datetimeorigination)}
-          >
+          <div className="text-xs text-muted-foreground">
+            {formatTimestamp(result.datetimeorigination)}
+          </div>
+          <div className="text-xs text-muted-foreground opacity-60">
             {formatRelativeTime(result.datetimeorigination)}
           </div>
         </div>
