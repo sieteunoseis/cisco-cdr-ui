@@ -112,17 +112,17 @@ export function ResultRow({ result, starred, onToggleStar }: ResultRowProps) {
             Call ID: {result.globalcallid_callid}
           </span>
         </div>
+        <div className="mt-1 text-xs text-muted-foreground">
+          {formatTimestamp(result.datetimeorigination)}
+          <span className="ml-2 opacity-60">
+            ({formatRelativeTime(result.datetimeorigination)})
+          </span>
+        </div>
       </div>
       <div className="flex items-center gap-3 ml-4 shrink-0">
         <div className="text-right">
           <div className="text-sm font-medium">
             {formatDurationFromInterval(result.duration)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {formatTimestamp(result.datetimeorigination)}
-          </div>
-          <div className="text-xs text-muted-foreground opacity-60">
-            {formatRelativeTime(result.datetimeorigination)}
           </div>
         </div>
         <Badge variant={isConnected ? "default" : "destructive"}>
