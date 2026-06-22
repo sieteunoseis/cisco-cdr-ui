@@ -35,7 +35,7 @@ docker run -p 8080:80 -e API_URL=https://your-cdr-backend ghcr.io/sieteunoseis/c
 ```yaml
 services:
   dashboard:
-    image: ghcr.io/sieteunoseis/cucm-cdr-dashboard:latest
+    image: ghcr.io/sieteunoseis/cucm-cdr-dashboard:main
     ports:
       - "8080:80"
     environment:
