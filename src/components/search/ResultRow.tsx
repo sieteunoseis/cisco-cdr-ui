@@ -6,11 +6,14 @@ import {
   formatTimestamp,
 } from "@/lib/format";
 import type { CdrResult } from "@/hooks/useSearch";
+import type { LabelRule } from "@/hooks/useLabelRules";
+import { matchLabelRules, BADGE_PALETTE } from "@/lib/labelRules";
 
 interface ResultRowProps {
   result: CdrResult;
   starred?: boolean;
   onToggleStar?: (callId: string, cmId: string, starred: boolean) => void;
+  rules?: LabelRule[];
 }
 
 export function isRecordingLeg(result: CdrResult): boolean {
@@ -49,12 +52,18 @@ export function hasPhoneDevice(result: CdrResult): boolean {
   );
 }
 
-export function ResultRow({ result, starred, onToggleStar }: ResultRowProps) {
+export function ResultRow({
+  result,
+  starred,
+  onToggleStar,
+  rules = [],
+}: ResultRowProps) {
   const navigate = useNavigate();
   const isConnected = result.datetimeconnect != null;
   const isRecording = isRecordingLeg(result);
   const transfer = !isRecording && isTransfer(result);
   const conference = !isRecording && isConference(result);
+  const matchedRules = matchLabelRules(result, rules);
 
   return (
     <div
@@ -91,6 +100,14 @@ export function ResultRow({ result, starred, onToggleStar }: ResultRowProps) {
               Conference
             </Badge>
           )}
+          {matchedRules.map((rule) => (
+            <Badge
+              key={rule.id}
+              className={`text-xs ml-2 ${BADGE_PALETTE[rule.color]}`}
+            >
+              {rule.label}
+            </Badge>
+          ))}
         </div>
         <div className="mt-1 text-xs text-muted-foreground truncate">
           {result.originalcalledpartynumber &&
