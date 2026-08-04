@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { isStoredRuleShape } from "@/lib/labelRules";
 
 export type LabelField = "calling" | "called" | "origDevice" | "destDevice";
 export type PaletteKey =
@@ -46,7 +47,12 @@ const DEFAULT_RULES: LabelRule[] = [
 function loadRules(): LabelRule[] {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) return JSON.parse(stored);
+    if (stored) {
+      const parsed: unknown = JSON.parse(stored);
+      if (Array.isArray(parsed)) {
+        return parsed.filter(isStoredRuleShape);
+      }
+    }
   } catch {
     // fall through to defaults
   }

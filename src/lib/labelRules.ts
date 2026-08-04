@@ -24,6 +24,7 @@ export function matchLabelRules(
   rules: LabelRule[],
 ): LabelRule[] {
   return rules.filter((rule) => {
+    if (!rule.enabled) return false;
     let re: RegExp;
     try {
       re = new RegExp(rule.pattern, "i");
@@ -52,11 +53,7 @@ const VALID_COLORS: readonly string[] = [
   "yellow",
 ];
 
-function isImportedRuleShape(
-  item: unknown,
-): item is Omit<LabelRule, "id" | "createdAt"> {
-  if (typeof item !== "object" || item === null) return false;
-  const r = item as Record<string, unknown>;
+function hasCommonRuleShape(r: Record<string, unknown>): boolean {
   return (
     typeof r.label === "string" &&
     typeof r.pattern === "string" &&
@@ -66,6 +63,23 @@ function isImportedRuleShape(
     Array.isArray(r.fields) &&
     r.fields.length > 0 &&
     r.fields.every((f) => typeof f === "string" && VALID_FIELDS.includes(f))
+  );
+}
+
+function isImportedRuleShape(
+  item: unknown,
+): item is Omit<LabelRule, "id" | "createdAt"> {
+  if (typeof item !== "object" || item === null) return false;
+  return hasCommonRuleShape(item as Record<string, unknown>);
+}
+
+export function isStoredRuleShape(item: unknown): item is LabelRule {
+  if (typeof item !== "object" || item === null) return false;
+  const r = item as Record<string, unknown>;
+  return (
+    typeof r.id === "string" &&
+    typeof r.createdAt === "string" &&
+    hasCommonRuleShape(r)
   );
 }
 

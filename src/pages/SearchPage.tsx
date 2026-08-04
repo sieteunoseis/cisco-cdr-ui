@@ -94,6 +94,12 @@ export function SearchPage() {
   const { rules } = useLabelRules();
   const enabledRules = useMemo(() => rules.filter((r) => r.enabled), [rules]);
 
+  // Prune hideTagIds of ids for rules that no longer exist (deleted, not just disabled).
+  useEffect(() => {
+    const validIds = new Set(rules.map((r) => r.id));
+    setHideTagIds((prev) => prev.filter((id) => validIds.has(id)));
+  }, [rules]);
+
   // Starred state
   const [starredMap, setStarredMap] = useState<Record<string, boolean>>({});
   const [starredResults, setStarredResults] = useState<CdrResult[]>([]);

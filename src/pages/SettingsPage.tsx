@@ -189,7 +189,14 @@ export function SettingsPage() {
               <Button variant="ghost" size="sm" onClick={() => startEdit(rule)}>
                 Edit
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => remove(rule.id)}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  remove(rule.id);
+                  if (editingId === rule.id) cancelEdit();
+                }}
+              >
                 Delete
               </Button>
             </div>
