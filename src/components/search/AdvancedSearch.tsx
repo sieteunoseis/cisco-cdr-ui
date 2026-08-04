@@ -17,9 +17,14 @@ export interface AdvancedSearchParams {
 interface AdvancedSearchProps {
   onSearch: (params: AdvancedSearchParams) => void;
   loading?: boolean;
+  defaultLast?: string;
 }
 
-export function AdvancedSearch({ onSearch, loading }: AdvancedSearchProps) {
+export function AdvancedSearch({
+  onSearch,
+  loading,
+  defaultLast = "24h",
+}: AdvancedSearchProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [open, setOpen] = useState(() => {
     // Auto-open if URL has advanced params
@@ -45,13 +50,11 @@ export function AdvancedSearch({ onSearch, loading }: AdvancedSearchProps) {
 
   const [start, setStart] = useState(() => {
     const sp = searchParams.get("start");
-    if (sp) return toLocalDatetime(new Date(sp));
-    return toLocalDatetime(new Date(Date.now() - 15 * 60 * 1000));
+    return sp ? toLocalDatetime(new Date(sp)) : "";
   });
   const [end, setEnd] = useState(() => {
     const sp = searchParams.get("end");
-    if (sp) return toLocalDatetime(new Date(sp));
-    return toLocalDatetime(new Date());
+    return sp ? toLocalDatetime(new Date(sp)) : "";
   });
 
   // Auto-search on mount if URL has advanced params
@@ -70,7 +73,7 @@ export function AdvancedSearch({ onSearch, loading }: AdvancedSearchProps) {
       if (cause.trim()) params.cause = cause.trim();
       if (start) params.start = new Date(start).toISOString();
       if (end) params.end = new Date(end).toISOString();
-      if (!start && !end) params.last = "24h";
+      if (!start && !end) params.last = defaultLast;
       params.limit = "200";
       onSearch(params);
     }
@@ -85,7 +88,7 @@ export function AdvancedSearch({ onSearch, loading }: AdvancedSearchProps) {
     if (cause.trim()) params.cause = cause.trim();
     if (start) params.start = new Date(start).toISOString();
     if (end) params.end = new Date(end).toISOString();
-    if (!start && !end) params.last = "24h";
+    if (!start && !end) params.last = defaultLast;
     params.limit = "200";
 
     // Sync to URL for sharing
@@ -211,7 +214,7 @@ export function AdvancedSearch({ onSearch, loading }: AdvancedSearchProps) {
             {copied ? "Link Copied!" : "Copy Link"}
           </Button>
           <span className="text-xs text-muted-foreground ml-auto">
-            Clear times for last 24h
+            Leave times blank to use the selected time range
           </span>
         </div>
       </form>

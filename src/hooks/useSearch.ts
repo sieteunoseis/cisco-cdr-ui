@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { searchCdr } from "@/api/client";
 
 export interface CdrResult {
@@ -47,10 +47,14 @@ export function useSearch() {
     error: null,
   });
 
+  const requestIdRef = useRef(0);
+
   const search = useCallback(async (params: Record<string, string>) => {
+    const requestId = ++requestIdRef.current;
     setState((s) => ({ ...s, loading: true, error: null }));
     try {
       const data = await searchCdr(params);
+      if (requestId !== requestIdRef.current) return; // superseded by a newer search
       setState({
         results: data.results,
         count: data.count,
@@ -58,6 +62,7 @@ export function useSearch() {
         error: null,
       });
     } catch (err: any) {
+      if (requestId !== requestIdRef.current) return;
       setState((s) => ({
         ...s,
         loading: false,

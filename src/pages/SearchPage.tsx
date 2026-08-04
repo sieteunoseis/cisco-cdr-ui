@@ -265,7 +265,11 @@ export function SearchPage() {
           </div>
         </div>
         {!showStarredOnly && (
-          <AdvancedSearch onSearch={handleAdvancedSearch} loading={loading} />
+          <AdvancedSearch
+            onSearch={handleAdvancedSearch}
+            loading={loading}
+            defaultLast={timeRange}
+          />
         )}
       </div>
       {error && (
