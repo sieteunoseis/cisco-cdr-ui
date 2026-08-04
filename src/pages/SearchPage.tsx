@@ -14,6 +14,8 @@ import {
   hasPhoneDevice,
 } from "@/components/search/ResultRow";
 import { useSearch } from "@/hooks/useSearch";
+import { useLabelRules } from "@/hooks/useLabelRules";
+import { matchLabelRules } from "@/lib/labelRules";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { checkStarred, starCall, unstarCall, getStarred } from "@/api/client";
@@ -50,8 +52,20 @@ export function SearchPage() {
   const [phonesOnly, setPhonesOnly] = useState(
     savedFilters.phonesOnly ?? false,
   );
+  const [hideTagIds, setHideTagIds] = useState<string[]>(
+    savedFilters.hideTagIds ?? [],
+  );
+  const [tagsFilterOpen, setTagsFilterOpen] = useState(false);
   const [showStarredOnly, setShowStarredOnly] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const toggleHideTag = (ruleId: string) => {
+    setHideTagIds((prev) =>
+      prev.includes(ruleId)
+        ? prev.filter((id) => id !== ruleId)
+        : [...prev, ruleId],
+    );
+  };
 
   // Persist filter state to sessionStorage
   useEffect(() => {
@@ -63,6 +77,7 @@ export function SearchPage() {
         hideTransfer,
         hideConference,
         phonesOnly,
+        hideTagIds,
       }),
     );
   }, [
@@ -71,10 +86,13 @@ export function SearchPage() {
     hideTransfer,
     hideConference,
     phonesOnly,
+    hideTagIds,
   ]);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const lastSearchRef = useRef<Record<string, string> | null>(null);
   const { results, count, loading, error, search } = useSearch();
+  const { rules } = useLabelRules();
+  const enabledRules = useMemo(() => rules.filter((r) => r.enabled), [rules]);
 
   // Starred state
   const [starredMap, setStarredMap] = useState<Record<string, boolean>>({});
@@ -147,7 +165,7 @@ export function SearchPage() {
   const displayResults = showStarredOnly ? starredResults : results;
   const displayLoading = showStarredOnly ? starredLoading : loading;
 
-  const { filteredResults, hiddenCounts } = useMemo(() => {
+  const { filteredResults, hiddenCounts, tagCounts } = useMemo(() => {
     let filtered = displayResults;
     const counts = {
       recording: 0,
@@ -156,6 +174,7 @@ export function SearchPage() {
       conference: 0,
       noPhone: 0,
     };
+    const tags: Record<string, number> = {};
     for (const r of displayResults) {
       if (isRecordingLeg(r)) counts.recording++;
       if (
@@ -167,6 +186,9 @@ export function SearchPage() {
       if (isTransfer(r)) counts.transfer++;
       if (isConference(r)) counts.conference++;
       if (!hasPhoneDevice(r)) counts.noPhone++;
+      for (const rule of matchLabelRules(r, enabledRules)) {
+        tags[rule.id] = (tags[rule.id] ?? 0) + 1;
+      }
     }
     if (hideRecording) filtered = filtered.filter((r) => !isRecordingLeg(r));
     if (hideZeroDuration)
@@ -179,7 +201,14 @@ export function SearchPage() {
     if (hideTransfer) filtered = filtered.filter((r) => !isTransfer(r));
     if (hideConference) filtered = filtered.filter((r) => !isConference(r));
     if (phonesOnly) filtered = filtered.filter((r) => hasPhoneDevice(r));
-    return { filteredResults: filtered, hiddenCounts: counts };
+    if (hideTagIds.length > 0)
+      filtered = filtered.filter(
+        (r) =>
+          !matchLabelRules(r, enabledRules).some((rule) =>
+            hideTagIds.includes(rule.id),
+          ),
+      );
+    return { filteredResults: filtered, hiddenCounts: counts, tagCounts: tags };
   }, [
     displayResults,
     hideRecording,
@@ -187,6 +216,8 @@ export function SearchPage() {
     hideTransfer,
     hideConference,
     phonesOnly,
+    hideTagIds,
+    enabledRules,
   ]);
 
   const handleSearch = useCallback(
@@ -337,7 +368,8 @@ export function SearchPage() {
                   hideZeroDuration ||
                   hideTransfer ||
                   hideConference ||
-                  phonesOnly) && (
+                  phonesOnly ||
+                  hideTagIds.length > 0) && (
                   <button
                     onClick={() => {
                       setHideRecording(false);
@@ -345,6 +377,7 @@ export function SearchPage() {
                       setHideTransfer(false);
                       setHideConference(false);
                       setPhonesOnly(false);
+                      setHideTagIds([]);
                     }}
                     className="text-muted-foreground hover:text-foreground text-xs"
                     title="Clear all filters"
@@ -363,7 +396,8 @@ export function SearchPage() {
                     hideZeroDuration ||
                     hideTransfer ||
                     hideConference ||
-                    phonesOnly) && (
+                    phonesOnly ||
+                    hideTagIds.length > 0) && (
                     <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] w-4 h-4">
                       {
                         [
@@ -372,6 +406,7 @@ export function SearchPage() {
                           hideTransfer,
                           hideConference,
                           phonesOnly,
+                          hideTagIds.length > 0,
                         ].filter(Boolean).length
                       }
                     </span>
@@ -414,6 +449,41 @@ export function SearchPage() {
                         onCheckedChange={setPhonesOnly}
                       />
                     </label>
+                    <div className="border-t border-border pt-2 space-y-1">
+                      <button
+                        type="button"
+                        onClick={() => setTagsFilterOpen((v) => !v)}
+                        className="w-full flex items-center justify-between text-xs"
+                      >
+                        <span>
+                          Hide tags
+                          {hideTagIds.length > 0 && ` (${hideTagIds.length})`}
+                        </span>
+                        <span>{tagsFilterOpen ? "▴" : "▾"}</span>
+                      </button>
+                      {tagsFilterOpen && (
+                        <div className="pl-2 space-y-1 max-h-32 overflow-y-auto">
+                          {enabledRules.length === 0 && (
+                            <p className="text-xs text-muted-foreground">
+                              No custom rules defined.
+                            </p>
+                          )}
+                          {enabledRules.map((rule) => (
+                            <label
+                              key={rule.id}
+                              className="flex items-center gap-2 text-xs cursor-pointer"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={hideTagIds.includes(rule.id)}
+                                onChange={() => toggleHideTag(rule.id)}
+                              />
+                              {rule.label} ({tagCounts[rule.id] ?? 0})
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -433,6 +503,7 @@ export function SearchPage() {
                   ]
                 }
                 onToggleStar={handleToggleStar}
+                rules={enabledRules}
               />
             ))}
           </div>
