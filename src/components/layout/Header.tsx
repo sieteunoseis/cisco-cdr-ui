@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 const NAV_ITEMS = [
   { label: "Search", path: "/" },
   { label: "SQL", path: "/sql" },
+  { label: "Settings", path: "/settings" },
 ];
 
 export function Header() {
