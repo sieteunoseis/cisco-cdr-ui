@@ -1,5 +1,12 @@
-import { useState, useCallback } from "react";
-import { isStoredRuleShape } from "@/lib/labelRules";
+import { useState, useCallback, useEffect } from "react";
+import {
+  getLabels,
+  createLabel,
+  updateLabel as apiUpdateLabel,
+  deleteLabel,
+  importLabels,
+  resetLabels,
+} from "@/api/client";
 
 export type LabelField = "calling" | "called" | "origDevice" | "destDevice";
 export type PaletteKey =
@@ -21,117 +28,85 @@ export interface LabelRule {
   createdAt: string;
 }
 
-const STORAGE_KEY = "cdr-label-rules";
-
-const DEFAULT_RULES: LabelRule[] = [
-  {
-    id: "default-analog",
-    label: "Analog",
-    color: "yellow",
-    fields: ["origDevice", "destDevice"],
-    pattern: "^(ATA|AN[0-9A-F])",
-    enabled: true,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "default-emergency",
-    label: "Emergency",
-    color: "red",
-    fields: ["called"],
-    pattern: "^(911|112|999|000|111)$",
-    enabled: true,
-    createdAt: new Date().toISOString(),
-  },
-];
-
-function loadRules(): LabelRule[] {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed: unknown = JSON.parse(stored);
-      if (Array.isArray(parsed)) {
-        return parsed.filter(isStoredRuleShape);
-      }
-    }
-  } catch {
-    // fall through to defaults
-  }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_RULES));
-  return DEFAULT_RULES;
-}
-
-function persist(rules: LabelRule[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(rules));
-}
-
 export function useLabelRules() {
-  const [rules, setRules] = useState<LabelRule[]>(loadRules);
+  const [rules, setRules] = useState<LabelRule[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const add = useCallback((rule: Omit<LabelRule, "id" | "createdAt">) => {
-    const newRule: LabelRule = {
-      ...rule,
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
+  useEffect(() => {
+    let cancelled = false;
+    getLabels()
+      .then((res) => {
+        if (cancelled) return;
+        setRules(res.rules);
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : String(err));
+        setLoading(false);
+      });
+    return () => {
+      cancelled = true;
     };
-    setRules((prev) => {
-      const updated = [...prev, newRule];
-      persist(updated);
-      return updated;
-    });
   }, []);
 
-  const update = useCallback(
-    (id: string, patch: Partial<Omit<LabelRule, "id" | "createdAt">>) => {
-      setRules((prev) => {
-        const updated = prev.map((r) =>
-          r.id === id ? { ...r, ...patch } : r,
-        );
-        persist(updated);
-        return updated;
-      });
+  const add = useCallback(
+    async (rule: Omit<LabelRule, "id" | "createdAt">) => {
+      const res = await createLabel(rule);
+      setRules((prev) => [...prev, res.rule]);
     },
     [],
   );
 
-  const remove = useCallback((id: string) => {
-    setRules((prev) => {
-      const updated = prev.filter((r) => r.id !== id);
-      persist(updated);
-      return updated;
-    });
+  const update = useCallback(
+    async (
+      id: string,
+      patch: Partial<Omit<LabelRule, "id" | "createdAt">>,
+    ) => {
+      const res = await apiUpdateLabel(id, patch);
+      setRules((prev) => prev.map((r) => (r.id === id ? res.rule : r)));
+    },
+    [],
+  );
+
+  const remove = useCallback(async (id: string) => {
+    await deleteLabel(id);
+    setRules((prev) => prev.filter((r) => r.id !== id));
   }, []);
 
-  const toggle = useCallback((id: string) => {
-    setRules((prev) => {
-      const updated = prev.map((r) =>
-        r.id === id ? { ...r, enabled: !r.enabled } : r,
-      );
-      persist(updated);
-      return updated;
-    });
-  }, []);
+  const toggle = useCallback(
+    async (id: string) => {
+      const current = rules.find((r) => r.id === id);
+      if (!current) return;
+      const res = await apiUpdateLabel(id, { enabled: !current.enabled });
+      setRules((prev) => prev.map((r) => (r.id === id ? res.rule : r)));
+    },
+    [rules],
+  );
 
-  const reset = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY);
-    setRules(DEFAULT_RULES);
-    persist(DEFAULT_RULES);
+  const reset = useCallback(async () => {
+    const res = await resetLabels();
+    setRules(res.rules);
   }, []);
 
   const importRules = useCallback(
-    (incoming: Omit<LabelRule, "id" | "createdAt">[]) => {
-      setRules((prev) => {
-        const withIds: LabelRule[] = incoming.map((r) => ({
-          ...r,
-          id: crypto.randomUUID(),
-          createdAt: new Date().toISOString(),
-        }));
-        const updated = [...prev, ...withIds];
-        persist(updated);
-        return updated;
-      });
+    async (incoming: Omit<LabelRule, "id" | "createdAt">[]) => {
+      const res = await importLabels(incoming);
+      setRules(res.rules);
     },
     [],
   );
 
-  return { rules, add, update, remove, toggle, reset, importRules };
+  return {
+    rules,
+    loading,
+    error,
+    add,
+    update,
+    remove,
+    toggle,
+    reset,
+    importRules,
+  };
 }
