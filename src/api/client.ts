@@ -1,3 +1,5 @@
+import type { LabelRule, LabelField, PaletteKey } from "@/hooks/useLabelRules";
+
 const BASE_URL =
   (window as any).__ENV__?.API_URL || import.meta.env.VITE_API_URL || "";
 
@@ -264,4 +266,57 @@ export function getPhoneWebPage(
     data?: { key: string; val: string }[];
     text?: string;
   }>(`/api/v1/device/${deviceName}/web/${page}${qs}`);
+}
+
+// Label rules
+export function getLabels() {
+  return apiFetch<{ rules: LabelRule[] }>("/api/v1/labels");
+}
+
+export function createLabel(rule: {
+  label: string;
+  color: PaletteKey;
+  fields: LabelField[];
+  pattern: string;
+  enabled: boolean;
+}) {
+  return apiFetch<{ rule: LabelRule }>("/api/v1/labels", {
+    method: "POST",
+    body: JSON.stringify(rule),
+  });
+}
+
+export function updateLabel(
+  id: string,
+  patch: Partial<{
+    label: string;
+    color: PaletteKey;
+    fields: LabelField[];
+    pattern: string;
+    enabled: boolean;
+  }>,
+) {
+  return apiFetch<{ rule: LabelRule }>(`/api/v1/labels/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(patch),
+  });
+}
+
+export function deleteLabel(id: string) {
+  return apiFetch<{ deleted: boolean }>(`/api/v1/labels/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export function importLabels(rules: Omit<LabelRule, "id" | "createdAt">[]) {
+  return apiFetch<{ imported: number; rules: LabelRule[] }>(
+    "/api/v1/labels/bulk",
+    { method: "POST", body: JSON.stringify({ rules }) },
+  );
+}
+
+export function resetLabels() {
+  return apiFetch<{ rules: LabelRule[] }>("/api/v1/labels/reset", {
+    method: "POST",
+  });
 }
