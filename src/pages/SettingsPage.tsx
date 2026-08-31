@@ -83,12 +83,17 @@ export function SettingsPage() {
 
   const handleSave = () => {
     if (!canSave) return;
-    if (editingId) {
-      update(editingId, { ...form }).catch((err) => console.error(err));
-    } else {
-      add({ ...form, enabled: true }).catch((err) => console.error(err));
-    }
-    cancelEdit();
+    const action = editingId
+      ? update(editingId, { ...form })
+      : add({ ...form, enabled: true });
+    action
+      .then(() => {
+        setImportError(null);
+        cancelEdit();
+      })
+      .catch((err) =>
+        setImportError(err instanceof Error ? err.message : "Save failed."),
+      );
   };
 
   const toggleField = (field: LabelField) => {
@@ -159,7 +164,13 @@ export function SettingsPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => reset().catch((err) => console.error(err))}
+            onClick={() =>
+              reset().catch((err) =>
+                setImportError(
+                  err instanceof Error ? err.message : "Reset failed.",
+                ),
+              )
+            }
           >
             Reset to Defaults
           </Button>
@@ -191,7 +202,11 @@ export function SettingsPage() {
                 <Switch
                   checked={rule.enabled}
                   onCheckedChange={() =>
-                    toggle(rule.id).catch((err) => console.error(err))
+                    toggle(rule.id).catch((err) =>
+                      setImportError(
+                        err instanceof Error ? err.message : "Update failed.",
+                      ),
+                    )
                   }
                 />
                 <span
@@ -215,8 +230,15 @@ export function SettingsPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() => {
-                    remove(rule.id).catch((err) => console.error(err));
-                    if (editingId === rule.id) cancelEdit();
+                    remove(rule.id)
+                      .then(() => {
+                        if (editingId === rule.id) cancelEdit();
+                      })
+                      .catch((err) =>
+                        setImportError(
+                          err instanceof Error ? err.message : "Delete failed.",
+                        ),
+                      );
                   }}
                 >
                   Delete

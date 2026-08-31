@@ -73,16 +73,6 @@ function isImportedRuleShape(
   return hasCommonRuleShape(item as Record<string, unknown>);
 }
 
-export function isStoredRuleShape(item: unknown): item is LabelRule {
-  if (typeof item !== "object" || item === null) return false;
-  const r = item as Record<string, unknown>;
-  return (
-    typeof r.id === "string" &&
-    typeof r.createdAt === "string" &&
-    hasCommonRuleShape(r)
-  );
-}
-
 export function parseImportedRules(
   json: string,
 ): Omit<LabelRule, "id" | "createdAt">[] | null {
