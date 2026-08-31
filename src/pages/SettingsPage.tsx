@@ -51,7 +51,7 @@ function isValidPattern(pattern: string): boolean {
 }
 
 export function SettingsPage() {
-  const { rules, add, update, remove, toggle, reset, importRules } =
+  const { rules, loading, error, add, update, remove, toggle, reset, importRules } =
     useLabelRules();
   const [form, setForm] = useState<RuleFormState>(EMPTY_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -84,9 +84,9 @@ export function SettingsPage() {
   const handleSave = () => {
     if (!canSave) return;
     if (editingId) {
-      update(editingId, { ...form });
+      update(editingId, { ...form }).catch((err) => console.error(err));
     } else {
-      add({ ...form, enabled: true });
+      add({ ...form, enabled: true }).catch((err) => console.error(err));
     }
     cancelEdit();
   };
@@ -121,10 +121,13 @@ export function SettingsPage() {
           setImportError("File doesn't contain a valid rule list.");
           return;
         }
-        importRules(parsed);
-        setImportError(null);
+        return importRules(parsed).then(() => setImportError(null));
       })
-      .catch(() => setImportError("Could not read file."));
+      .catch((err) =>
+        setImportError(
+          err instanceof Error ? err.message : "Could not read file.",
+        ),
+      );
   };
 
   return (
@@ -153,11 +156,21 @@ export function SettingsPage() {
               e.target.value = "";
             }}
           />
-          <Button variant="ghost" size="sm" onClick={reset}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => reset().catch((err) => console.error(err))}
+          >
             Reset to Defaults
           </Button>
         </div>
       </div>
+
+      {error && (
+        <div className="rounded-lg bg-destructive/10 p-3 text-destructive text-sm">
+          Couldn't load label rules from the server: {error}
+        </div>
+      )}
 
       {importError && (
         <div className="rounded-lg bg-destructive/10 p-3 text-destructive text-sm">
@@ -165,50 +178,60 @@ export function SettingsPage() {
         </div>
       )}
 
-      <div className="space-y-2">
-        {rules.map((rule) => (
-          <div
-            key={rule.id}
-            className="flex items-center justify-between rounded-lg border border-border p-3"
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <Switch
-                checked={rule.enabled}
-                onCheckedChange={() => toggle(rule.id)}
-              />
-              <span
-                className={`text-xs px-2 py-0.5 rounded-full border ${BADGE_PALETTE[rule.color]}`}
-              >
-                {rule.label}
-              </span>
-              <span className="text-xs text-muted-foreground truncate">
-                {rule.fields.join(", ")} · <code>{rule.pattern}</code>
-              </span>
+      {loading ? (
+        <p className="text-sm text-muted-foreground">Loading rules…</p>
+      ) : (
+        <div className="space-y-2">
+          {rules.map((rule) => (
+            <div
+              key={rule.id}
+              className="flex items-center justify-between rounded-lg border border-border p-3"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <Switch
+                  checked={rule.enabled}
+                  onCheckedChange={() =>
+                    toggle(rule.id).catch((err) => console.error(err))
+                  }
+                />
+                <span
+                  className={`text-xs px-2 py-0.5 rounded-full border ${BADGE_PALETTE[rule.color]}`}
+                >
+                  {rule.label}
+                </span>
+                <span className="text-xs text-muted-foreground truncate">
+                  {rule.fields.join(", ")} · <code>{rule.pattern}</code>
+                </span>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => startEdit(rule)}
+                >
+                  Edit
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    remove(rule.id).catch((err) => console.error(err));
+                    if (editingId === rule.id) cancelEdit();
+                  }}
+                >
+                  Delete
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center gap-1 shrink-0">
-              <Button variant="ghost" size="sm" onClick={() => startEdit(rule)}>
-                Edit
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  remove(rule.id);
-                  if (editingId === rule.id) cancelEdit();
-                }}
-              >
-                Delete
-              </Button>
-            </div>
-          </div>
-        ))}
-        {rules.length === 0 && (
-          <p className="text-sm text-muted-foreground">
-            No label rules yet. Add one below — for example, an "Internal"
-            rule matching your own trunk or gateway device-name convention.
-          </p>
-        )}
-      </div>
+          ))}
+          {rules.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              No label rules yet. Add one below — for example, an "Internal"
+              rule matching your own trunk or gateway device-name convention.
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="rounded-lg border border-border p-4 space-y-3">
         <h3 className="text-sm font-semibold">
