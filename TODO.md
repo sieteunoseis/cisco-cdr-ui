@@ -34,7 +34,7 @@
 ## Quality & Monitoring
 
 - [x] Codec in Quality card
-- [ ] Quality alerts — flag calls with MOS below threshold
+- [x] Quality alerts — flag calls with MOS below threshold — Quality Degradation alert type (MOS/jitter/latency/packet loss), scopable to a label.
 - [ ] Codec mismatch detection (orig vs dest codec differ)
 - [ ] Dashboard view — call volume, failure rate, top destinations (last 24h)
 
@@ -78,7 +78,7 @@
 - [x] Detect call spikes (volume, failure rate, etc)
 - [x] Scope volume_spike/failure_rate rules to a label (optional filter, reuse label_volume's match mechanism)
 - [x] Volume drop / device-down detection (inverse of volume_spike, direction toggle)
-- [ ] Quality degradation alert type (MOS/jitter from CMR, ties into "Quality alerts" below)
+- [x] Quality degradation alert type (MOS/jitter from CMR, ties into "Quality alerts" below)
 - [ ] After-hours/time-of-day scoping for rules (classic toll-fraud signature)
 
 # Documentation Updates
