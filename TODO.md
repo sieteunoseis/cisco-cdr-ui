@@ -28,8 +28,8 @@
 - [ ] Saved search filters (like saved SQL queries but for main search)
 - [ ] Bulk number search (paste a list of DNs, get all calls)
 - [ ] Time-of-day heatmap (when do most calls happen for a DN)
-- [ ] Fix filters. Example if i wanted to hide 0s calls and show just Analog labels. i would have to hide all the other labels. This is not intuitive. I should be able to just select the labels i want to see and hide the rest. This is a UX issue.
-- [ ] Migrate the hardcoded "Recording" filter (isRecordingLeg in ResultRow.tsx) to a real label — pattern is OHSU-specific (Inform/Record/BIB device naming), so it's not portable to other deployments as-is. Phones-only filter is the same story (device-name prefix regex, already expressible as a label). Do this together with the filter UX fix above — once Recording is a label, "Hide recording" collapses into the same hide-tags mechanism instead of being a separate hardcoded checkbox. Transfer/Conference stay hardcoded (they match numeric on-behalf-of CDR fields, not the string fields label_rules currently supports).
+- [x] Fix filters. Example if i wanted to hide 0s calls and show just Analog labels. i would have to hide all the other labels. This is not intuitive. I should be able to just select the labels i want to see and hide the rest. This is a UX issue. — Labels filter now has a Hide/Show-only mode toggle.
+- [ ] Migrate the hardcoded "Recording" filter (isRecordingLeg in ResultRow.tsx) to a real label — the "Recording" label now exists (backend) with the exact same pattern, and can already be used via the new Show-only mode, but the hardcoded "Hide recording" checkbox/opacity logic in ResultRow.tsx hasn't been removed/replaced yet. Phones-only filter is the same story (device-name prefix regex, already expressible as a label, not yet migrated). Transfer/Conference stay hardcoded (they match numeric on-behalf-of CDR fields, not the string fields label_rules currently supports).
 
 ## Quality & Monitoring
 

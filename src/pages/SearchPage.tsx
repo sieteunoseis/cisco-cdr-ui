@@ -66,15 +66,22 @@ export function SearchPage() {
   const [phonesOnly, setPhonesOnly] = useState(
     savedFilters.phonesOnly ?? false,
   );
-  const [hideTagIds, setHideTagIds] = useState<string[]>(
-    savedFilters.hideTagIds ?? [],
+  // The set of selected label ids, and whether that selection means "hide
+  // calls with these labels" or "show only calls with these labels" — the
+  // latter is what lets you pick one label (e.g. Analog) instead of having
+  // to hide every other enabled label one by one to get the same result.
+  const [tagFilterIds, setTagFilterIds] = useState<string[]>(
+    savedFilters.tagFilterIds ?? savedFilters.hideTagIds ?? [],
+  );
+  const [tagFilterMode, setTagFilterMode] = useState<"hide" | "show">(
+    savedFilters.tagFilterMode ?? "hide",
   );
   const [tagsFilterOpen, setTagsFilterOpen] = useState(false);
   const [showStarredOnly, setShowStarredOnly] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const toggleHideTag = (ruleId: string) => {
-    setHideTagIds((prev) =>
+  const toggleTagFilter = (ruleId: string) => {
+    setTagFilterIds((prev) =>
       prev.includes(ruleId)
         ? prev.filter((id) => id !== ruleId)
         : [...prev, ruleId],
@@ -91,7 +98,8 @@ export function SearchPage() {
         hideTransfer,
         hideConference,
         phonesOnly,
-        hideTagIds,
+        tagFilterIds,
+        tagFilterMode,
       }),
     );
   }, [
@@ -100,7 +108,8 @@ export function SearchPage() {
     hideTransfer,
     hideConference,
     phonesOnly,
-    hideTagIds,
+    tagFilterIds,
+    tagFilterMode,
   ]);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const lastSearchRef = useRef<Record<string, string> | null>(null);
@@ -108,10 +117,10 @@ export function SearchPage() {
   const { rules, add } = useLabelRules();
   const enabledRules = useMemo(() => rules.filter((r) => r.enabled), [rules]);
 
-  // Prune hideTagIds of ids for rules that no longer exist (deleted, not just disabled).
+  // Prune tagFilterIds of ids for rules that no longer exist (deleted, not just disabled).
   useEffect(() => {
     const validIds = new Set(rules.map((r) => r.id));
-    setHideTagIds((prev) => prev.filter((id) => validIds.has(id)));
+    setTagFilterIds((prev) => prev.filter((id) => validIds.has(id)));
   }, [rules]);
 
   // Starred state
@@ -277,13 +286,13 @@ export function SearchPage() {
     if (hideTransfer) filtered = filtered.filter((r) => !isTransfer(r));
     if (hideConference) filtered = filtered.filter((r) => !isConference(r));
     if (phonesOnly) filtered = filtered.filter((r) => hasPhoneDevice(r));
-    if (hideTagIds.length > 0)
-      filtered = filtered.filter(
-        (r) =>
-          !matchLabelRules(r, enabledRules).some((rule) =>
-            hideTagIds.includes(rule.id),
-          ),
-      );
+    if (tagFilterIds.length > 0)
+      filtered = filtered.filter((r) => {
+        const matches = matchLabelRules(r, enabledRules).some((rule) =>
+          tagFilterIds.includes(rule.id),
+        );
+        return tagFilterMode === "show" ? matches : !matches;
+      });
     return { filteredResults: filtered, hiddenCounts: counts, tagCounts: tags };
   }, [
     displayResults,
@@ -292,7 +301,8 @@ export function SearchPage() {
     hideTransfer,
     hideConference,
     phonesOnly,
-    hideTagIds,
+    tagFilterIds,
+    tagFilterMode,
     enabledRules,
   ]);
 
@@ -481,7 +491,7 @@ export function SearchPage() {
                   hideTransfer ||
                   hideConference ||
                   phonesOnly ||
-                  hideTagIds.length > 0) && (
+                  tagFilterIds.length > 0) && (
                   <button
                     onClick={() => {
                       setHideRecording(false);
@@ -489,7 +499,8 @@ export function SearchPage() {
                       setHideTransfer(false);
                       setHideConference(false);
                       setPhonesOnly(false);
-                      setHideTagIds([]);
+                      setTagFilterIds([]);
+                      setTagFilterMode("hide");
                     }}
                     className="text-muted-foreground hover:text-foreground text-xs"
                     title="Clear all filters"
@@ -509,7 +520,7 @@ export function SearchPage() {
                     hideTransfer ||
                     hideConference ||
                     phonesOnly ||
-                    hideTagIds.length > 0) && (
+                    tagFilterIds.length > 0) && (
                     <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] w-4 h-4">
                       {
                         [
@@ -518,7 +529,7 @@ export function SearchPage() {
                           hideTransfer,
                           hideConference,
                           phonesOnly,
-                          hideTagIds.length > 0,
+                          tagFilterIds.length > 0,
                         ].filter(Boolean).length
                       }
                     </span>
@@ -568,13 +579,37 @@ export function SearchPage() {
                         className="w-full flex items-center justify-between text-xs"
                       >
                         <span>
-                          Hide tags
-                          {hideTagIds.length > 0 && ` (${hideTagIds.length})`}
+                          Labels
+                          {tagFilterIds.length > 0 && ` (${tagFilterIds.length})`}
                         </span>
                         <span>{tagsFilterOpen ? "▴" : "▾"}</span>
                       </button>
                       {tagsFilterOpen && (
-                        <div className="pl-2 space-y-1 max-h-32 overflow-y-auto">
+                        <div className="pl-2 space-y-2 max-h-40 overflow-y-auto">
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setTagFilterMode("hide")}
+                              className={`px-2 py-0.5 rounded-full border text-xs ${
+                                tagFilterMode === "hide"
+                                  ? "bg-primary text-primary-foreground border-primary"
+                                  : "text-muted-foreground border-border"
+                              }`}
+                            >
+                              Hide selected
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setTagFilterMode("show")}
+                              className={`px-2 py-0.5 rounded-full border text-xs ${
+                                tagFilterMode === "show"
+                                  ? "bg-primary text-primary-foreground border-primary"
+                                  : "text-muted-foreground border-border"
+                              }`}
+                            >
+                              Show only selected
+                            </button>
+                          </div>
                           {enabledRules.length === 0 && (
                             <p className="text-xs text-muted-foreground">
                               No custom rules defined.
@@ -587,8 +622,8 @@ export function SearchPage() {
                             >
                               <input
                                 type="checkbox"
-                                checked={hideTagIds.includes(rule.id)}
-                                onChange={() => toggleHideTag(rule.id)}
+                                checked={tagFilterIds.includes(rule.id)}
+                                onChange={() => toggleTagFilter(rule.id)}
                               />
                               {rule.label} ({tagCounts[rule.id] ?? 0})
                             </label>
