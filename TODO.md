@@ -28,7 +28,7 @@
 - [ ] Saved search filters (like saved SQL queries but for main search)
 - [ ] Bulk number search (paste a list of DNs, get all calls)
 - [ ] Time-of-day heatmap (when do most calls happen for a DN)
-- [x] Fix filters. Example if i wanted to hide 0s calls and show just Analog labels. i would have to hide all the other labels. This is not intuitive. I should be able to just select the labels i want to see and hide the rest. This is a UX issue. — Labels filter now has a Hide/Show-only mode toggle.
+- [x] Fix filters. Example if i wanted to hide 0s calls and show just Analog labels. i would have to hide all the other labels. This is not intuitive. I should be able to just select the labels i want to see and hide the rest. This is a UX issue. — Replaced with a single show-all-by-default, select-chips-to-narrow model (all quick filters + labels as chips, union across selections).
 - [ ] Migrate the hardcoded "Recording" filter (isRecordingLeg in ResultRow.tsx) to a real label — the "Recording" label now exists (backend) with the exact same pattern, and can already be used via the new Show-only mode, but the hardcoded "Hide recording" checkbox/opacity logic in ResultRow.tsx hasn't been removed/replaced yet. Phones-only filter is the same story (device-name prefix regex, already expressible as a label, not yet migrated). Transfer/Conference stay hardcoded (they match numeric on-behalf-of CDR fields, not the string fields label_rules currently supports).
 
 ## Quality & Monitoring
@@ -76,8 +76,8 @@
 
 # Anomaly Detection
 - [x] Detect call spikes (volume, failure rate, etc)
-- [ ] Scope volume_spike/failure_rate rules to a label (optional filter, reuse label_volume's match mechanism)
-- [ ] Volume drop / device-down detection (inverse of volume_spike, direction toggle)
+- [x] Scope volume_spike/failure_rate rules to a label (optional filter, reuse label_volume's match mechanism)
+- [x] Volume drop / device-down detection (inverse of volume_spike, direction toggle)
 - [ ] Quality degradation alert type (MOS/jitter from CMR, ties into "Quality alerts" below)
 - [ ] After-hours/time-of-day scoping for rules (classic toll-fraud signature)
 
