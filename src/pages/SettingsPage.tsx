@@ -39,6 +39,7 @@ interface RuleFormState {
   color: PaletteKey;
   fields: LabelField[];
   pattern: string;
+  external: boolean;
 }
 
 const EMPTY_FORM: RuleFormState = {
@@ -46,6 +47,7 @@ const EMPTY_FORM: RuleFormState = {
   color: "blue",
   fields: [],
   pattern: "",
+  external: false,
 };
 
 function isValidPattern(pattern: string): boolean {
@@ -82,6 +84,7 @@ export function SettingsPage() {
       color: rule.color,
       fields: rule.fields,
       pattern: rule.pattern,
+      external: rule.external,
     });
     formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
@@ -286,6 +289,16 @@ export function SettingsPage() {
                     </p>
                   )}
                 </div>
+                <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.external}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, external: e.target.checked }))
+                    }
+                  />
+                  External number (exclude from DN Map)
+                </label>
                 <div className="flex items-center gap-2">
                   <Button size="sm" disabled={!canSave} onClick={handleSave}>
                     {editingId ? "Save Changes" : "Add Rule"}
@@ -327,14 +340,23 @@ export function SettingsPage() {
                         >
                           {rule.label}
                         </span>
+                        {rule.external && (
+                          <span
+                            className="text-xs px-2 py-0.5 rounded-full border border-border text-muted-foreground"
+                            title="Excluded from the DN Map"
+                          >
+                            External
+                          </span>
+                        )}
                         <span className="text-xs text-muted-foreground truncate">
                           {rule.fields.join(", ")} ·{" "}
                           <code>{rule.pattern}</code>
                         </span>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        {(rule.fields.includes("calling") ||
-                          rule.fields.includes("called")) && (
+                        {!rule.external &&
+                          (rule.fields.includes("calling") ||
+                            rule.fields.includes("called")) && (
                           <Button
                             variant="ghost"
                             size="sm"

@@ -223,6 +223,7 @@ export function SearchPage() {
             fields: ["calling"],
             pattern: `^${number}$`,
             enabled: true,
+            external: true,
           });
           setSpamCheckMessage(`${number} flagged as spam.`);
         } else {

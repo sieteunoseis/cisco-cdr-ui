@@ -279,6 +279,7 @@ export function createLabel(rule: {
   fields: LabelField[];
   pattern: string;
   enabled: boolean;
+  external?: boolean;
 }) {
   return apiFetch<{ rule: LabelRule }>("/api/v1/labels", {
     method: "POST",
@@ -294,6 +295,7 @@ export function updateLabel(
     fields: LabelField[];
     pattern: string;
     enabled: boolean;
+    external: boolean;
   }>,
 ) {
   return apiFetch<{ rule: LabelRule }>(`/api/v1/labels/${id}`, {

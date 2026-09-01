@@ -25,6 +25,7 @@ export interface LabelRule {
   fields: LabelField[];
   pattern: string;
   enabled: boolean;
+  external: boolean;
   createdAt: string;
 }
 

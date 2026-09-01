@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Phone, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -63,13 +63,16 @@ export function SeatMapPage() {
   const [deviceLookup, setDeviceLookup] = useState<DeviceLookupState | null>(
     null,
   );
+  const deviceLookupRef = useRef<HTMLDivElement>(null);
   const [filter, setFilter] = useState<SeatFilter>("all");
   const [callCounts, setCallCounts] = useState<Record<string, CallCounts>>(
     {},
   );
 
   const numberRules = rules.filter(
-    (r) => r.fields.includes("calling") || r.fields.includes("called"),
+    (r) =>
+      !r.external &&
+      (r.fields.includes("calling") || r.fields.includes("called")),
   );
   const selectedRule = selectedLabelName
     ? numberRules.find((r) => r.label === selectedLabelName) || null
@@ -176,6 +179,20 @@ export function SeatMapPage() {
       cancelled = true;
     };
   }, [selectedId, page, rules]);
+
+  // The device panel renders below the (often tall) seat grid — without
+  // this, opening it from a seat near the top leaves it out of view. Keyed
+  // on the number rather than the whole object so the loading -> loaded
+  // transition doesn't re-trigger the scroll.
+  useEffect(() => {
+    if (deviceLookup) {
+      deviceLookupRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deviceLookup?.number]);
 
   // Call volume per DN for the current page — fetched separately from the
   // seat grid itself so a slow/failed count lookup never blocks rendering
@@ -364,7 +381,10 @@ export function SeatMapPage() {
           </div>
 
           {deviceLookup && (
-            <div className="rounded-lg border border-border p-3 space-y-2">
+            <div
+              ref={deviceLookupRef}
+              className="rounded-lg border border-border p-3 space-y-2"
+            >
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold">
                   Devices on {deviceLookup.number}

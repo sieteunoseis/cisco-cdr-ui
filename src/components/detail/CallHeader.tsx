@@ -90,6 +90,7 @@ export function CallHeader({ cdr, onSpamProviders }: CallHeaderProps) {
           fields: ["calling"],
           pattern: `^${callingNumber}$`,
           enabled: true,
+          external: true,
         });
         setSpamStatus("spam");
       } else {
