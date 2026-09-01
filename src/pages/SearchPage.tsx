@@ -24,7 +24,10 @@ import {
   unstarCall,
   getStarred,
   checkSpam,
+  getSpamChecked,
+  type CachedSpamCheck,
 } from "@/api/client";
+import { isCheckableNumber } from "@/lib/spam";
 import type { CdrResult } from "@/hooks/useSearch";
 
 const REFRESH_INTERVAL = 30000;
@@ -123,6 +126,27 @@ export function SearchPage() {
       .catch(() => {});
   }, [results]);
 
+  // Batch-fetch already-checked spam status so ResultRow can hide the
+  // "Check Spam" button (and show a verified icon) instead of re-checking
+  // — each check burns a Twilio add-on credit.
+  const [spamCheckedMap, setSpamCheckedMap] = useState<
+    Record<string, CachedSpamCheck>
+  >({});
+
+  useEffect(() => {
+    const numbers = [
+      ...new Set(
+        results
+          .map((r) => r.callingpartynumber || "")
+          .filter(isCheckableNumber),
+      ),
+    ];
+    if (numbers.length === 0) return;
+    getSpamChecked(numbers)
+      .then((data) => setSpamCheckedMap((prev) => ({ ...prev, ...data.results })))
+      .catch(() => {});
+  }, [results]);
+
   // Load starred calls when filter is toggled on
   useEffect(() => {
     if (!showStarredOnly) return;
@@ -182,8 +206,12 @@ export function SearchPage() {
     async (number: string) => {
       setSpamCheckMessage(`Checking ${number}…`);
       try {
-        const { isSpam } = await checkSpam(number);
-        if (isSpam) {
+        const result = await checkSpam(number);
+        setSpamCheckedMap((prev) => ({
+          ...prev,
+          [number]: { ...result, checkedAt: new Date().toISOString() },
+        }));
+        if (result.isSpam) {
           await add({
             label: "Spam",
             color: "red",
@@ -565,6 +593,7 @@ export function SearchPage() {
                 }
                 onToggleStar={handleToggleStar}
                 onCheckSpam={handleCheckSpam}
+                spamChecked={spamCheckedMap[r.callingpartynumber || ""]}
                 rules={enabledRules}
               />
             ))}

@@ -357,9 +357,35 @@ export function getNumplanDevices(number: string) {
 }
 
 // Spam check
+export interface SpamProviderResult {
+  isSpam: boolean;
+  riskLevel?: number;
+  riskRating?: string;
+  carrier?: string | null;
+  lineType?: string | null;
+  ported?: boolean | null;
+  error?: string;
+}
+
+export interface SpamCheckResult {
+  isSpam: boolean;
+  providers: Record<string, SpamProviderResult>;
+}
+
 export function checkSpam(number: string) {
-  return apiFetch<{ isSpam: boolean }>("/api/v1/spam/check", {
+  return apiFetch<SpamCheckResult>("/api/v1/spam/check", {
     method: "POST",
     body: JSON.stringify({ number }),
   });
+}
+
+export interface CachedSpamCheck extends SpamCheckResult {
+  checkedAt: string;
+}
+
+export function getSpamChecked(numbers: string[]) {
+  const q = encodeURIComponent(numbers.join(","));
+  return apiFetch<{ results: Record<string, CachedSpamCheck> }>(
+    `/api/v1/spam/checked?numbers=${q}`,
+  );
 }

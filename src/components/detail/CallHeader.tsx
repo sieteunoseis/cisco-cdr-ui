@@ -3,7 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatDurationFromInterval, formatTimestamp } from "@/lib/format";
-import { isStarred, starCall, unstarCall, checkSpam, createLabel } from "@/api/client";
+import {
+  isStarred,
+  starCall,
+  unstarCall,
+  checkSpam,
+  createLabel,
+  getSpamChecked,
+  type SpamProviderResult,
+} from "@/api/client";
 import { isCheckableNumber } from "@/lib/spam";
 
 interface CallHeaderProps {
@@ -18,6 +26,9 @@ export function CallHeader({ cdr }: CallHeaderProps) {
   const [starred, setStarred] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [spamStatus, setSpamStatus] = useState<SpamStatus>("unknown");
+  const [spamProviders, setSpamProviders] = useState<
+    Record<string, SpamProviderResult> | null
+  >(null);
 
   const callId = String(cdr.globalcallid_callid);
   const cmId = String(cdr.globalcallid_callmanagerid);
@@ -28,6 +39,20 @@ export function CallHeader({ cdr }: CallHeaderProps) {
       .then((r) => setStarred(r.starred))
       .catch(() => {});
   }, [callId, cmId]);
+
+  // Restore a previously cached spam-check result so the button doesn't
+  // re-appear (and burn another add-on credit) on repeat visits.
+  useEffect(() => {
+    if (!isCheckableNumber(callingNumber)) return;
+    getSpamChecked([callingNumber])
+      .then((data) => {
+        const cached = data.results[callingNumber];
+        if (!cached) return;
+        setSpamProviders(cached.providers);
+        setSpamStatus(cached.isSpam ? "spam" : "not_spam");
+      })
+      .catch(() => {});
+  }, [callingNumber]);
 
   const toggleStar = async () => {
     setToggling(true);
@@ -46,7 +71,8 @@ export function CallHeader({ cdr }: CallHeaderProps) {
   const runSpamCheck = async () => {
     setSpamStatus("checking");
     try {
-      const { isSpam } = await checkSpam(callingNumber);
+      const { isSpam, providers } = await checkSpam(callingNumber);
+      setSpamProviders(providers);
       if (isSpam) {
         // Also persist as a label rule so this number gets the same badge
         // everywhere else it shows up (Search results), not just here.
@@ -65,6 +91,11 @@ export function CallHeader({ cdr }: CallHeaderProps) {
       setSpamStatus("error");
     }
   };
+
+  // Scout is the only provider that returns carrier/risk detail worth
+  // showing; Nomorobo is just the binary score already reflected in
+  // spamStatus.
+  const scoutResult = spamProviders?.icehook_scout;
 
   return (
     <div className="space-y-4">
@@ -106,12 +137,23 @@ export function CallHeader({ cdr }: CallHeaderProps) {
           )}
           {spamStatus === "not_spam" && (
             <p className="text-xs text-muted-foreground mt-1">
-              Not flagged as spam.
+              <span className="text-green-500">✓</span> Verified not spam
             </p>
           )}
           {spamStatus === "error" && (
             <p className="text-xs text-destructive mt-1">
               Spam check failed.
+            </p>
+          )}
+          {scoutResult && !scoutResult.error && (
+            <p className="text-xs text-muted-foreground mt-1">
+              {scoutResult.carrier && <>Carrier: {scoutResult.carrier} </>}
+              {scoutResult.lineType && <>· {scoutResult.lineType} </>}
+              {scoutResult.riskRating && (
+                <>
+                  · Risk: {scoutResult.riskRating} ({scoutResult.riskLevel})
+                </>
+              )}
             </p>
           )}
           {cdr.originalcalledpartynumber &&

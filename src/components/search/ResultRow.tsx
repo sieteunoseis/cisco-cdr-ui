@@ -9,12 +9,14 @@ import type { CdrResult } from "@/hooks/useSearch";
 import type { LabelRule } from "@/hooks/useLabelRules";
 import { matchLabelRules, BADGE_PALETTE } from "@/lib/labelRules";
 import { isCheckableNumber } from "@/lib/spam";
+import type { CachedSpamCheck } from "@/api/client";
 
 interface ResultRowProps {
   result: CdrResult;
   starred?: boolean;
   onToggleStar?: (callId: string, cmId: string, starred: boolean) => void;
   onCheckSpam?: (number: string) => void;
+  spamChecked?: CachedSpamCheck;
   rules?: LabelRule[];
 }
 
@@ -59,6 +61,7 @@ export function ResultRow({
   starred,
   onToggleStar,
   onCheckSpam,
+  spamChecked,
   rules = [],
 }: ResultRowProps) {
   const navigate = useNavigate();
@@ -150,18 +153,29 @@ export function ResultRow({
             ? "Connected"
             : result.destcause_description || `Cause ${result.destcause_value}`}
         </Badge>
-        {onCheckSpam && isCheckableNumber(result.callingpartynumber || "") && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onCheckSpam(result.callingpartynumber || "");
-            }}
-            className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
-            title="Check calling number for spam"
-          >
-            Check Spam
-          </button>
-        )}
+        {onCheckSpam &&
+          isCheckableNumber(result.callingpartynumber || "") &&
+          (spamChecked ? (
+            !spamChecked.isSpam && (
+              <span
+                className="text-green-500 text-sm"
+                title={`Verified not spam (checked ${new Date(spamChecked.checkedAt).toLocaleString()})`}
+              >
+                ✓
+              </span>
+            )
+          ) : (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onCheckSpam(result.callingpartynumber || "");
+              }}
+              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+              title="Check calling number for spam"
+            >
+              Check Spam
+            </button>
+          ))}
         {onToggleStar && (
           <button
             onClick={(e) => {
