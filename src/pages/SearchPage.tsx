@@ -521,6 +521,11 @@ export function SearchPage() {
               />
             ))}
           </div>
+          {!showStarredOnly && limit > 100 && results.length < limit && (
+            <p className="text-center text-sm text-muted-foreground py-2">
+              No more results.
+            </p>
+          )}
           {!showStarredOnly && results.length >= limit && (
             <Button
               variant="outline"
