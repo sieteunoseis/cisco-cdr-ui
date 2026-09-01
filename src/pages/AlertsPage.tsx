@@ -15,6 +15,7 @@ import {
   getAlertBreakdown,
   type AlertRule,
   type AlertRuleType,
+  type AlertDirection,
   type AlertCheckResult,
   type AlertBreakdownEntry,
   type LongCallEntry,
@@ -26,6 +27,7 @@ interface RuleFormState {
   window: string;
   threshold: string;
   labelId: string;
+  direction: AlertDirection;
 }
 
 const EMPTY_FORM: RuleFormState = {
@@ -34,9 +36,18 @@ const EMPTY_FORM: RuleFormState = {
   window: "1h",
   threshold: "2",
   labelId: "",
+  direction: "above",
 };
 
 const WINDOW_RE = /^\d+[mhdw]$/;
+
+// Types that accept an optional label scope (org-wide unless one is
+// chosen) as opposed to label_volume, where the label is the whole point.
+const LABEL_SCOPABLE_TYPES: AlertRuleType[] = ["volume_spike", "failure_rate"];
+// Types where "above vs. below the threshold" is a meaningful choice —
+// failure_rate/long_call only make sense as "above" (a low failure rate or
+// a call that stayed short isn't alert-worthy).
+const DIRECTION_TYPES: AlertRuleType[] = ["volume_spike", "label_volume"];
 
 const TYPE_LABELS: Record<AlertRuleType, string> = {
   volume_spike: "Volume Spike",
@@ -45,27 +56,33 @@ const TYPE_LABELS: Record<AlertRuleType, string> = {
   long_call: "Long Call",
 };
 
-function thresholdHint(type: AlertRuleType): string {
+function thresholdHint(type: AlertRuleType, direction: AlertDirection): string {
+  const below = direction === "below";
   switch (type) {
     case "volume_spike":
-      return "Multiplier — e.g. 2 means alert if call volume is 2x the prior window";
+      return below
+        ? "Multiplier — e.g. 0.5 means alert if call volume drops to 50% or less of the prior window (device/trunk-down detection)"
+        : "Multiplier — e.g. 2 means alert if call volume is 2x the prior window";
     case "failure_rate":
       return "Percent — e.g. 20 means alert if 20% or more of calls failed";
     case "label_volume":
-      return "Count — e.g. 50 means alert if 50 or more calls match the chosen label in the window";
+      return below
+        ? "Count — e.g. 5 means alert if fewer than 5 calls match the chosen label in the window (e.g. recording silently stopped)"
+        : "Count — e.g. 50 means alert if 50 or more calls match the chosen label in the window";
     case "long_call":
       return "Seconds — e.g. 3600 means alert if any call in the window exceeds 1 hour";
   }
 }
 
 function formatThreshold(rule: AlertRule): string {
+  const below = rule.direction === "below";
   switch (rule.type) {
     case "volume_spike":
-      return `${rule.threshold}x`;
+      return `${below ? "≤" : "≥"}${rule.threshold}x`;
     case "failure_rate":
       return `${rule.threshold}%`;
     case "label_volume":
-      return `${rule.threshold} calls`;
+      return `${below ? "<" : "≥"}${rule.threshold} calls`;
     case "long_call":
       return formatDuration(rule.threshold);
   }
@@ -258,6 +275,7 @@ export function AlertsPage() {
       window: rule.window,
       threshold: String(rule.threshold),
       labelId: rule.labelId ?? "",
+      direction: rule.direction,
     });
   };
 
@@ -273,7 +291,8 @@ export function AlertsPage() {
       type: form.type,
       window: form.window.trim(),
       threshold: thresholdNum,
-      ...(form.type === "label_volume" ? { labelId: form.labelId } : {}),
+      direction: form.direction,
+      labelId: form.labelId || null,
     };
     const action = editingId
       ? updateAlertRule(editingId, payload)
@@ -373,9 +392,11 @@ export function AlertsPage() {
                     {r.type === "volume_spike" &&
                       `${r.current} vs ${r.baseline} prior${
                         r.value !== null ? ` (${r.value}x)` : ""
-                      }`}
+                      }${r.labelName ? ` — ${r.labelName}` : ""}`}
                     {r.type === "failure_rate" &&
-                      `${r.current}/${r.baseline} failed (${r.value}%)`}
+                      `${r.current}/${r.baseline} failed (${r.value}%)${
+                        r.labelName ? ` — ${r.labelName}` : ""
+                      }`}
                     {r.type === "label_volume" &&
                       `${r.current} of ${r.baseline} matched "${r.labelName ?? "label"}"`}
                     {r.type === "long_call" &&
@@ -492,10 +513,13 @@ export function AlertsPage() {
               <option value="long_call">Long Call</option>
             </select>
           </div>
-          {form.type === "label_volume" && (
+          {(form.type === "label_volume" ||
+            LABEL_SCOPABLE_TYPES.includes(form.type)) && (
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">
-                Label
+                {form.type === "label_volume"
+                  ? "Label"
+                  : "Scope to Label (optional)"}
               </label>
               <select
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
@@ -505,12 +529,36 @@ export function AlertsPage() {
                 }
                 aria-invalid={!labelValid}
               >
-                <option value="">Select a label…</option>
+                <option value="">
+                  {form.type === "label_volume"
+                    ? "Select a label…"
+                    : "None (org-wide)"}
+                </option>
                 {labelRules.map((l) => (
                   <option key={l.id} value={l.id}>
                     {l.label}
                   </option>
                 ))}
+              </select>
+            </div>
+          )}
+          {DIRECTION_TYPES.includes(form.type) && (
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">
+                Direction
+              </label>
+              <select
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={form.direction}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    direction: e.target.value as AlertDirection,
+                  }))
+                }
+              >
+                <option value="above">At or above threshold</option>
+                <option value="below">At or below threshold (drop)</option>
               </select>
             </div>
           )}
@@ -549,7 +597,7 @@ export function AlertsPage() {
           </div>
         </div>
         <p className="text-xs text-muted-foreground">
-          {thresholdHint(form.type)}
+          {thresholdHint(form.type, form.direction)}
         </p>
         <div className="flex items-center gap-2">
           <Button size="sm" disabled={!canSave} onClick={handleSave}>
@@ -583,6 +631,8 @@ export function AlertsPage() {
                 <span className="text-xs text-muted-foreground truncate">
                   {TYPE_LABELS[rule.type]} · {rule.window} ·{" "}
                   {formatThreshold(rule)}
+                  {rule.labelId &&
+                    ` · ${labelRules.find((l) => l.id === rule.labelId)?.label ?? "label"}`}
                 </span>
               </div>
               <div className="flex items-center gap-1 shrink-0">

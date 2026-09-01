@@ -330,6 +330,8 @@ export type AlertRuleType =
   | "label_volume"
   | "long_call";
 
+export type AlertDirection = "above" | "below";
+
 export interface AlertRule {
   id: string;
   name: string;
@@ -338,6 +340,7 @@ export interface AlertRule {
   threshold: number;
   enabled: boolean;
   labelId: string | null;
+  direction: AlertDirection;
   createdAt: string;
 }
 
@@ -359,7 +362,8 @@ export function createAlertRule(rule: {
   window: string;
   threshold: number;
   enabled: boolean;
-  labelId?: string;
+  labelId?: string | null;
+  direction?: AlertDirection;
 }) {
   return apiFetch<{ rule: AlertRule }>("/api/v1/alerts/rules", {
     method: "POST",
@@ -375,7 +379,8 @@ export function updateAlertRule(
     window: string;
     threshold: number;
     enabled: boolean;
-    labelId: string;
+    labelId: string | null;
+    direction: AlertDirection;
   }>,
 ) {
   return apiFetch<{ rule: AlertRule }>(`/api/v1/alerts/rules/${id}`, {
