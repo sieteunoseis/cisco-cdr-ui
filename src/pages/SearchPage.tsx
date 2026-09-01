@@ -60,6 +60,7 @@ export function SearchPage() {
       : [],
   );
   const [tagsFilterOpen, setTagsFilterOpen] = useState(false);
+  const [labelSearch, setLabelSearch] = useState("");
   const [showStarredOnly, setShowStarredOnly] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -81,6 +82,11 @@ export function SearchPage() {
   const { results, count, loading, error, search } = useSearch();
   const { rules, add } = useLabelRules();
   const enabledRules = useMemo(() => rules.filter((r) => r.enabled), [rules]);
+  const visibleLabelRules = useMemo(() => {
+    const q = labelSearch.trim().toLowerCase();
+    if (!q) return enabledRules;
+    return enabledRules.filter((r) => r.label.toLowerCase().includes(q));
+  }, [enabledRules, labelSearch]);
 
   // Prune selectedFilterIds of label ids for rules that no longer exist
   // (deleted, not just disabled) — leaves the fixed quick-filter ids alone.
@@ -514,36 +520,54 @@ export function SearchPage() {
                         <span>{tagsFilterOpen ? "▴" : "▾"}</span>
                       </button>
                       {tagsFilterOpen && (
-                        <div className="pl-2 max-h-40 overflow-y-auto">
-                          {enabledRules.length === 0 && (
-                            <p className="text-xs text-muted-foreground">
+                        <div className="space-y-1.5">
+                          {enabledRules.length === 0 ? (
+                            <p className="text-xs text-muted-foreground pl-2">
                               No custom rules defined.
                             </p>
+                          ) : (
+                            <input
+                              type="text"
+                              value={labelSearch}
+                              onChange={(e) => setLabelSearch(e.target.value)}
+                              placeholder="Search labels…"
+                              className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs"
+                            />
                           )}
-                          <div className="flex flex-wrap gap-1">
-                            {enabledRules.map((rule) => {
-                              const active = selectedFilterIds.includes(
-                                rule.id,
-                              );
-                              return (
-                                <button
-                                  key={rule.id}
-                                  type="button"
-                                  onClick={() => toggleFilter(rule.id)}
-                                  title={rule.label}
-                                  className={`inline-flex items-center gap-1 max-w-[9rem] px-1.5 py-0.5 rounded-full border text-xs ${
-                                    active
-                                      ? "bg-primary text-primary-foreground border-primary"
-                                      : "text-muted-foreground border-border hover:border-foreground"
-                                  }`}
-                                >
-                                  {active && <X className="size-3 shrink-0" />}
-                                  <span className="truncate">
-                                    {rule.label} ({tagCounts[rule.id] ?? 0})
-                                  </span>
-                                </button>
-                              );
-                            })}
+                          <div className="pl-2 max-h-40 overflow-y-auto">
+                            <div className="flex flex-wrap gap-1">
+                              {visibleLabelRules.map((rule) => {
+                                const active = selectedFilterIds.includes(
+                                  rule.id,
+                                );
+                                return (
+                                  <button
+                                    key={rule.id}
+                                    type="button"
+                                    onClick={() => toggleFilter(rule.id)}
+                                    title={rule.label}
+                                    className={`inline-flex items-center gap-1 max-w-[9rem] px-1.5 py-0.5 rounded-full border text-xs ${
+                                      active
+                                        ? "bg-primary text-primary-foreground border-primary"
+                                        : "text-muted-foreground border-border hover:border-foreground"
+                                    }`}
+                                  >
+                                    {active && (
+                                      <X className="size-3 shrink-0" />
+                                    )}
+                                    <span className="truncate">
+                                      {rule.label} ({tagCounts[rule.id] ?? 0})
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                              {enabledRules.length > 0 &&
+                                visibleLabelRules.length === 0 && (
+                                  <p className="text-xs text-muted-foreground">
+                                    No labels match "{labelSearch}".
+                                  </p>
+                                )}
+                            </div>
                           </div>
                         </div>
                       )}
