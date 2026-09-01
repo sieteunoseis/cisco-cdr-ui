@@ -62,3 +62,12 @@
 - [ ] cisco-risport Docker container fix (issue #3)
 - [ ] Legacy DB support — query netdb02-1.ohsu.edu:19491/netinfo for historical CDR (2025-03-29 to 2026-03-25, 70M rows, timestamp format vs our epoch bigint)
 - [ ] Drag-and-drop SIP ladder column reordering
+
+
+# DN Map
+- [ ] Map DN to user (CUCM LDAP, AD, HR DB)? DeviceNumPlanMapEndUserMap? EndUserDeviceMap?
+- [ ] Device name to CUCM admin?
+- [ ] Filters? Used/Unused? etc
+- [ ] Count of calls per DN (last 24h, last 7d, last 30d)?
+- [ ] Show regex match? or how it was matched?
+- [ ] Translation Pattern matches?

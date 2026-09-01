@@ -18,7 +18,13 @@ import { useLabelRules } from "@/hooks/useLabelRules";
 import { matchLabelRules } from "@/lib/labelRules";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { checkStarred, starCall, unstarCall, getStarred } from "@/api/client";
+import {
+  checkStarred,
+  starCall,
+  unstarCall,
+  getStarred,
+  checkSpam,
+} from "@/api/client";
 import type { CdrResult } from "@/hooks/useSearch";
 
 const REFRESH_INTERVAL = 30000;
@@ -91,7 +97,7 @@ export function SearchPage() {
   const [autoRefresh, setAutoRefresh] = useState(false);
   const lastSearchRef = useRef<Record<string, string> | null>(null);
   const { results, count, loading, error, search } = useSearch();
-  const { rules } = useLabelRules();
+  const { rules, add } = useLabelRules();
   const enabledRules = useMemo(() => rules.filter((r) => r.enabled), [rules]);
 
   // Prune hideTagIds of ids for rules that no longer exist (deleted, not just disabled).
@@ -166,6 +172,36 @@ export function SearchPage() {
       } catch {}
     },
     [showStarredOnly],
+  );
+
+  const [spamCheckMessage, setSpamCheckMessage] = useState<string | null>(
+    null,
+  );
+
+  const handleCheckSpam = useCallback(
+    async (number: string) => {
+      setSpamCheckMessage(`Checking ${number}…`);
+      try {
+        const { isSpam } = await checkSpam(number);
+        if (isSpam) {
+          await add({
+            label: "Spam",
+            color: "red",
+            fields: ["calling"],
+            pattern: `^${number}$`,
+            enabled: true,
+          });
+          setSpamCheckMessage(`${number} flagged as spam.`);
+        } else {
+          setSpamCheckMessage(`${number} is not flagged as spam.`);
+        }
+      } catch (err) {
+        setSpamCheckMessage(
+          err instanceof Error ? err.message : "Spam check failed.",
+        );
+      }
+    },
+    [add],
   );
 
   const displayResults = showStarredOnly ? starredResults : results;
@@ -320,6 +356,17 @@ export function SearchPage() {
       {error && (
         <div className="rounded-lg bg-destructive/10 p-4 text-destructive text-sm">
           {error}
+        </div>
+      )}
+      {spamCheckMessage && (
+        <div className="rounded-lg bg-muted p-3 text-sm flex items-center justify-between">
+          {spamCheckMessage}
+          <button
+            onClick={() => setSpamCheckMessage(null)}
+            className="text-muted-foreground hover:text-foreground ml-3"
+          >
+            ✕
+          </button>
         </div>
       )}
       {displayResults.length > 0 && (
@@ -517,6 +564,7 @@ export function SearchPage() {
                   ]
                 }
                 onToggleStar={handleToggleStar}
+                onCheckSpam={handleCheckSpam}
                 rules={enabledRules}
               />
             ))}

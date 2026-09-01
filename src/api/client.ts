@@ -355,3 +355,11 @@ export function getNumplanDevices(number: string) {
     `/api/v1/numplan/devices?number=${encodeURIComponent(number)}`,
   );
 }
+
+// Spam check
+export function checkSpam(number: string) {
+  return apiFetch<{ isSpam: boolean }>("/api/v1/spam/check", {
+    method: "POST",
+    body: JSON.stringify({ number }),
+  });
+}

@@ -8,11 +8,13 @@ import {
 import type { CdrResult } from "@/hooks/useSearch";
 import type { LabelRule } from "@/hooks/useLabelRules";
 import { matchLabelRules, BADGE_PALETTE } from "@/lib/labelRules";
+import { isCheckableNumber } from "@/lib/spam";
 
 interface ResultRowProps {
   result: CdrResult;
   starred?: boolean;
   onToggleStar?: (callId: string, cmId: string, starred: boolean) => void;
+  onCheckSpam?: (number: string) => void;
   rules?: LabelRule[];
 }
 
@@ -56,6 +58,7 @@ export function ResultRow({
   result,
   starred,
   onToggleStar,
+  onCheckSpam,
   rules = [],
 }: ResultRowProps) {
   const navigate = useNavigate();
@@ -147,6 +150,18 @@ export function ResultRow({
             ? "Connected"
             : result.destcause_description || `Cause ${result.destcause_value}`}
         </Badge>
+        {onCheckSpam && isCheckableNumber(result.callingpartynumber || "") && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onCheckSpam(result.callingpartynumber || "");
+            }}
+            className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+            title="Check calling number for spam"
+          >
+            Check Spam
+          </button>
+        )}
         {onToggleStar && (
           <button
             onClick={(e) => {
