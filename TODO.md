@@ -75,6 +75,10 @@
 
 # Anomaly Detection
 - [x] Detect call spikes (volume, failure rate, etc)
+- [ ] Scope volume_spike/failure_rate rules to a label (optional filter, reuse label_volume's match mechanism)
+- [ ] Volume drop / device-down detection (inverse of volume_spike, direction toggle)
+- [ ] Quality degradation alert type (MOS/jitter from CMR, ties into "Quality alerts" below)
+- [ ] After-hours/time-of-day scoping for rules (classic toll-fraud signature)
 
 # Documentation Updates
 - [x] Update README with new features (MCP, Twilio etc)
