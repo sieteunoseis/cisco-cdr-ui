@@ -323,6 +323,69 @@ export function resetLabels() {
   });
 }
 
+// Alert rules
+export type AlertRuleType = "volume_spike" | "failure_rate";
+
+export interface AlertRule {
+  id: string;
+  name: string;
+  type: AlertRuleType;
+  window: string;
+  threshold: number;
+  enabled: boolean;
+  createdAt: string;
+}
+
+export interface AlertCheckResult extends AlertRule {
+  triggered: boolean;
+  current: number;
+  baseline: number;
+  value: number | null;
+}
+
+export function getAlertRules() {
+  return apiFetch<{ rules: AlertRule[] }>("/api/v1/alerts/rules");
+}
+
+export function createAlertRule(rule: {
+  name: string;
+  type: AlertRuleType;
+  window: string;
+  threshold: number;
+  enabled: boolean;
+}) {
+  return apiFetch<{ rule: AlertRule }>("/api/v1/alerts/rules", {
+    method: "POST",
+    body: JSON.stringify(rule),
+  });
+}
+
+export function updateAlertRule(
+  id: string,
+  patch: Partial<{
+    name: string;
+    type: AlertRuleType;
+    window: string;
+    threshold: number;
+    enabled: boolean;
+  }>,
+) {
+  return apiFetch<{ rule: AlertRule }>(`/api/v1/alerts/rules/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(patch),
+  });
+}
+
+export function deleteAlertRule(id: string) {
+  return apiFetch<{ deleted: boolean }>(`/api/v1/alerts/rules/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export function checkAlerts() {
+  return apiFetch<{ results: AlertCheckResult[] }>("/api/v1/alerts/check");
+}
+
 // DN map
 export interface SeatMapSeat {
   number: string;

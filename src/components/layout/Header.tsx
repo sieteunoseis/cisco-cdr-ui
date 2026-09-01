@@ -6,6 +6,7 @@ const NAV_ITEMS = [
   { label: "Search", path: "/" },
   { label: "SQL", path: "/sql" },
   { label: "DN Map", path: "/seat-map" },
+  { label: "Alerts", path: "/alerts" },
   { label: "Settings", path: "/settings" },
 ];
 
