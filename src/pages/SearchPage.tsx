@@ -7,13 +7,7 @@ import {
   AdvancedSearch,
   type AdvancedSearchParams,
 } from "@/components/search/AdvancedSearch";
-import {
-  ResultRow,
-  isRecordingLeg,
-  isTransfer,
-  isConference,
-  hasPhoneDevice,
-} from "@/components/search/ResultRow";
+import { ResultRow, isTransfer, isConference } from "@/components/search/ResultRow";
 import { useSearch } from "@/hooks/useSearch";
 import { useLabelRules } from "@/hooks/useLabelRules";
 import { matchLabelRules } from "@/lib/labelRules";
@@ -54,11 +48,12 @@ export function SearchPage() {
   // Nothing selected = show every call. Selecting a chip (quick filter or
   // label) narrows to calls matching at least one selected chip — select
   // more to broaden the set, not narrow it further. Quick filters use
-  // fixed synthetic ids ("recording", "zero", "transfer", "conference",
-  // "phones"); everything else is a real label id. Old saved shape
-  // (separate hide/show-only booleans) isn't migrated — the semantics
-  // changed, so a stale "hide recording" flag would invert into "show
-  // only recording" if carried over.
+  // fixed synthetic ids ("zero", "transfer", "conference"); everything
+  // else is a real label id — Recording/Phone Device used to be quick
+  // filters too but are ordinary labels now. Old saved shape (separate
+  // hide/show-only booleans) isn't migrated — the semantics changed, so a
+  // stale "hide recording" flag would invert into "show only recording"
+  // if carried over.
   const [selectedFilterIds, setSelectedFilterIds] = useState<string[]>(
     Array.isArray(savedFilters.selectedFilterIds)
       ? savedFilters.selectedFilterIds
@@ -91,13 +86,7 @@ export function SearchPage() {
   // (deleted, not just disabled) — leaves the fixed quick-filter ids alone.
   useEffect(() => {
     const validIds = new Set(rules.map((r) => r.id));
-    const quickFilterIds = new Set([
-      "recording",
-      "zero",
-      "transfer",
-      "conference",
-      "phones",
-    ]);
+    const quickFilterIds = new Set(["zero", "transfer", "conference"]);
     setSelectedFilterIds((prev) =>
       prev.filter((id) => quickFilterIds.has(id) || validIds.has(id)),
     );
@@ -233,15 +222,12 @@ export function SearchPage() {
   const { filteredResults, hiddenCounts, tagCounts } = useMemo(() => {
     let filtered = displayResults;
     const counts = {
-      recording: 0,
       zeroDuration: 0,
       transfer: 0,
       conference: 0,
-      noPhone: 0,
     };
     const tags: Record<string, number> = {};
     for (const r of displayResults) {
-      if (isRecordingLeg(r)) counts.recording++;
       if (
         r.duration === "00:00:00" ||
         r.duration === "0" ||
@@ -250,18 +236,17 @@ export function SearchPage() {
         counts.zeroDuration++;
       if (isTransfer(r)) counts.transfer++;
       if (isConference(r)) counts.conference++;
-      if (!hasPhoneDevice(r)) counts.noPhone++;
       for (const rule of matchLabelRules(r, enabledRules)) {
         tags[rule.id] = (tags[rule.id] ?? 0) + 1;
       }
     }
     // Nothing selected = show everything. Any selection narrows to calls
     // matching at least one selected chip (quick filter or label) — select
-    // more chips to broaden the set, not narrow it further.
+    // more chips to broaden the set, not narrow it further. Recording and
+    // Phone Device used to be hardcoded checks here — they're ordinary
+    // labels now, so they're covered by the matchLabelRules check below.
     if (selectedFilterIds.length > 0) {
       filtered = filtered.filter((r) => {
-        if (selectedFilterIds.includes("recording") && isRecordingLeg(r))
-          return true;
         if (
           selectedFilterIds.includes("zero") &&
           (r.duration === "00:00:00" ||
@@ -272,8 +257,6 @@ export function SearchPage() {
         if (selectedFilterIds.includes("transfer") && isTransfer(r))
           return true;
         if (selectedFilterIds.includes("conference") && isConference(r))
-          return true;
-        if (selectedFilterIds.includes("phones") && hasPhoneDevice(r))
           return true;
         return matchLabelRules(r, enabledRules).some((rule) =>
           selectedFilterIds.includes(rule.id),
@@ -494,11 +477,9 @@ export function SearchPage() {
                     <div className="flex flex-wrap gap-1">
                       {(
                         [
-                          { key: "recording", label: "Recording", count: hiddenCounts.recording },
                           { key: "zero", label: "0s calls", count: hiddenCounts.zeroDuration },
                           { key: "transfer", label: "Transfers", count: hiddenCounts.transfer },
                           { key: "conference", label: "Conferences", count: hiddenCounts.conference },
-                          { key: "phones", label: "Phones only", count: null },
                         ] as const
                       ).map((f) => {
                         const active = selectedFilterIds.includes(f.key);

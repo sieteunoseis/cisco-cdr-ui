@@ -29,7 +29,7 @@
 - [ ] Bulk number search (paste a list of DNs, get all calls)
 - [ ] Time-of-day heatmap (when do most calls happen for a DN)
 - [x] Fix filters. Example if i wanted to hide 0s calls and show just Analog labels. i would have to hide all the other labels. This is not intuitive. I should be able to just select the labels i want to see and hide the rest. This is a UX issue. — Replaced with a single show-all-by-default, select-chips-to-narrow model (all quick filters + labels as chips, union across selections).
-- [ ] Migrate the hardcoded "Recording" filter (isRecordingLeg in ResultRow.tsx) to a real label — the "Recording" label now exists (backend) with the exact same pattern, and can already be used via the new Show-only mode, but the hardcoded "Hide recording" checkbox/opacity logic in ResultRow.tsx hasn't been removed/replaced yet. Phones-only filter is the same story (device-name prefix regex, already expressible as a label, not yet migrated). Transfer/Conference stay hardcoded (they match numeric on-behalf-of CDR fields, not the string fields label_rules currently supports).
+- [x] Migrate the hardcoded "Recording"/"Phones only" filters to real labels — isRecordingLeg/hasPhoneDevice removed from ResultRow.tsx; Recording and Phone Device are now ordinary labels (seeded by default going forward), matched via matchLabelRules like any other label. Transfer/Conference stay hardcoded (they match numeric on-behalf-of CDR fields, not the string fields label_rules currently supports).
 
 ## Quality & Monitoring
 

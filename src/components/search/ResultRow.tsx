@@ -21,20 +21,6 @@ interface ResultRowProps {
   rules?: LabelRule[];
 }
 
-export function isRecordingLeg(result: CdrResult): boolean {
-  const calling = result.callingpartynumber || "";
-  const called = result.finalcalledpartynumber || "";
-  const origDevice = result.origdevicename || "";
-  const destDevice = result.destdevicename || "";
-  const bib = /^b\d{5,}/;
-  return (
-    bib.test(calling) ||
-    bib.test(called) ||
-    /Inform|Record|BIB/i.test(origDevice) ||
-    /Inform|Record|BIB/i.test(destDevice)
-  );
-}
-
 // Transfer: on-behalf-of 5=transfer, 6=consult transfer only
 // Don't trigger on lastredirectdn alone — UCCE populates it for normal routing
 export function isTransfer(result: CdrResult): boolean {
@@ -48,15 +34,6 @@ export function isConference(result: CdrResult): boolean {
   return (result.joinonbehalfof || 0) !== 0;
 }
 
-// Has a phone device (SEP, AN, JBR, TCT, BOT, CSF) on either side
-const PHONE_PREFIX = /^(SEP|AN[A-F0-9]|JBR|TCT|BOT|CSF)/i;
-export function hasPhoneDevice(result: CdrResult): boolean {
-  return (
-    PHONE_PREFIX.test(result.origdevicename || "") ||
-    PHONE_PREFIX.test(result.destdevicename || "")
-  );
-}
-
 export function ResultRow({
   result,
   starred,
@@ -67,10 +44,16 @@ export function ResultRow({
 }: ResultRowProps) {
   const navigate = useNavigate();
   const isConnected = result.datetimeconnect != null;
-  const isRecording = isRecordingLeg(result);
+  const matchedRules = matchLabelRules(result, rules);
+  // "Recording" is an ordinary label now (portable across deployments,
+  // not a hardcoded OHSU device-naming assumption) — its badge renders
+  // via matchedRules below like any other label. Dimming/transfer/
+  // conference suppression still depend on it being present by that
+  // name, so those fall away silently if the label is renamed or
+  // disabled rather than erroring.
+  const isRecording = matchedRules.some((r) => r.label === "Recording");
   const transfer = !isRecording && isTransfer(result);
   const conference = !isRecording && isConference(result);
-  const matchedRules = matchLabelRules(result, rules);
 
   return (
     <div
@@ -92,11 +75,6 @@ export function ResultRow({
           <span className="font-medium">
             {result.finalcalledpartynumber || "N/A"}
           </span>
-          {isRecording && (
-            <Badge variant="outline" className="text-xs ml-2">
-              Recording
-            </Badge>
-          )}
           {transfer && (
             <Badge className="text-xs ml-2 bg-orange-500/15 text-orange-400 border-orange-500/25">
               Transfer
