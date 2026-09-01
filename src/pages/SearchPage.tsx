@@ -250,6 +250,14 @@ export function SearchPage() {
     [search],
   );
 
+  const handleLoadMore = useCallback(() => {
+    const newLimit = limit + 100;
+    setLimit(newLimit);
+    const params = { ...(lastSearchRef.current ?? {}), limit: String(newLimit) };
+    lastSearchRef.current = params;
+    search(params);
+  }, [limit, search]);
+
   // Load calls on mount and when time range changes
   useEffect(() => {
     if (showStarredOnly) return;
@@ -517,7 +525,7 @@ export function SearchPage() {
             <Button
               variant="outline"
               className="w-full"
-              onClick={() => setLimit((l) => l + 100)}
+              onClick={handleLoadMore}
             >
               Load more
             </Button>
