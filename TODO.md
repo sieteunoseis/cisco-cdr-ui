@@ -2,10 +2,9 @@
 
 ## Caller Management
 
-- [ ] Caller ID lookup (CNAM via Twilio/OpenCNAM)
-- [ ] Add number to spam blacklist
-- [ ] Add number to spam whitelist
-- [ ] Add number to contacts
+- [x] Caller ID lookup (CNAM via Twilio)
+- [ ] Add number to spam blacklist via Cisco CUCM API
+- [ ] Add number to spam whitelist via Cisco CUCM API
 
 ## Call Analysis
 
@@ -43,6 +42,7 @@
 - [x] Autocomplete for tables and columns
 - [x] Saved query reset button
 - [ ] Shared saved SQL queries (backend-stored, team-visible)
+- [ ] Translation Pattern matches?
 
 ## Device Diagnostics
 
@@ -66,8 +66,15 @@
 
 # DN Map
 - [ ] Map DN to user (CUCM LDAP, AD, HR DB)? DeviceNumPlanMapEndUserMap? EndUserDeviceMap?
-- [ ] Device name to CUCM admin?
-- [ ] Filters? Used/Unused? etc
-- [ ] Count of calls per DN (last 24h, last 7d, last 30d)?
-- [ ] Show regex match? or how it was matched?
-- [ ] Translation Pattern matches?
+- [x] Device name to CUCM admin?
+- [x] Filters? Used/Unused? etc
+- [x] Count of calls per DN (last 24h, last 7d, last 30d)? Link to CDR records
+- [x] Show regex match? or how it was matched?
+
+
+# Anomaly Detection
+- [ ] Detect call spikes (volume, failure rate, etc)
+
+# Documentation Updates
+- [x] Update README with new features (MCP, Twilio etc)
+- [x] Link frontend to backend in readme to easily find and vice versa. Optional frontend for cisco-cucm-cdr (v1.3.0+).....this has been renamed
