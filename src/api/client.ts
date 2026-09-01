@@ -321,7 +321,7 @@ export function resetLabels() {
   });
 }
 
-// DID seat map
+// DN map
 export interface SeatMapSeat {
   number: string;
   configured: boolean;
@@ -332,6 +332,7 @@ export type SeatMapResponse =
   | { eligible: false }
   | {
       eligible: true;
+      prefix: string;
       totalCount: number;
       totalPages: number;
       page: number;
@@ -341,5 +342,16 @@ export type SeatMapResponse =
 export function getNumplanSeats(pattern: string, page: number) {
   return apiFetch<SeatMapResponse>(
     `/api/v1/numplan/seats?pattern=${encodeURIComponent(pattern)}&page=${page}`,
+  );
+}
+
+export interface NumplanDevice {
+  name: string;
+  description: string | null;
+}
+
+export function getNumplanDevices(number: string) {
+  return apiFetch<{ devices: NumplanDevice[] }>(
+    `/api/v1/numplan/devices?number=${encodeURIComponent(number)}`,
   );
 }

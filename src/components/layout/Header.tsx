@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 const NAV_ITEMS = [
   { label: "Search", path: "/" },
   { label: "SQL", path: "/sql" },
-  { label: "Seat Map", path: "/seat-map" },
+  { label: "DN Map", path: "/seat-map" },
   { label: "Settings", path: "/settings" },
 ];
 
