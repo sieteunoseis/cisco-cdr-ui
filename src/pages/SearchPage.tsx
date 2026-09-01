@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useLocation } from "react-router-dom";
 import { SearchBar } from "@/components/search/SearchBar";
 import { TimeRange } from "@/components/search/TimeRange";
 import {
@@ -34,6 +34,11 @@ const REFRESH_INTERVAL = 30000;
 
 export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  // The nav bar's "Search" link points at this same route ("/"), so
+  // clicking it while already here doesn't remount the component — only
+  // location.key changes (it's unique per navigation, even to the same
+  // path). Used below to force a reset instead of requiring a page reload.
+  const location = useLocation();
   const initialQuery = searchParams.get("q") || "";
   const initialTimeRange = searchParams.get("t") || "24h";
 
@@ -293,8 +298,14 @@ export function SearchPage() {
   const handleSearch = useCallback(
     (query: string) => {
       setShowStarredOnly(false);
-      setSearchParams({ q: query, t: timeRange }, { replace: true });
-      const params = { number: query, last: timeRange, limit: String(limit) };
+      const urlParams: Record<string, string> = { t: timeRange };
+      if (query) urlParams.q = query;
+      setSearchParams(urlParams, { replace: true });
+      const params: Record<string, string> = {
+        last: timeRange,
+        limit: String(limit),
+      };
+      if (query) params.number = query;
       lastSearchRef.current = params;
       search(params);
     },
@@ -322,7 +333,16 @@ export function SearchPage() {
     search(params);
   }, [limit, search]);
 
-  // Load calls on mount and when time range changes
+  // Reset paging back to the default whenever the nav bar's "Search" link
+  // is clicked (a fresh navigation to this route, even without a path
+  // change, bumps location.key).
+  useEffect(() => {
+    setLimit(100);
+  }, [location.key]);
+
+  // Load calls on mount, when time range changes, and on a fresh
+  // navigation back to this route (location.key) — covers the nav bar's
+  // "Search" link no longer being a no-op when a search is already active.
   useEffect(() => {
     if (showStarredOnly) return;
     const params: Record<string, string> = {
@@ -332,7 +352,8 @@ export function SearchPage() {
     if (initialQuery) params.number = initialQuery;
     lastSearchRef.current = params;
     search(params);
-  }, [timeRange]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeRange, location.key]);
 
   // Auto-refresh
   useEffect(() => {
@@ -347,6 +368,7 @@ export function SearchPage() {
     <div className="space-y-6">
       <div className="space-y-4">
         <SearchBar
+          key={location.key}
           onSearch={handleSearch}
           loading={loading}
           initialValue={initialQuery}
