@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Phone, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLabelRules } from "@/hooks/useLabelRules";
@@ -27,14 +27,18 @@ interface DeviceLookupState {
 
 export function SeatMapPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { rules, loading: rulesLoading } = useLabelRules();
   // Read once, synchronously, at mount — no effect needed. Which *rule* this
   // name maps to isn't known until `rules` finishes loading, so selectedRule/
   // selectedId below are derived during render rather than stored directly;
   // once `rules` populates, they resolve on their own without any extra
-  // setState round trip.
+  // setState round trip. A `?label=` link (e.g. from the Settings page)
+  // takes priority over the remembered last-viewed label.
   const [selectedLabelName, setSelectedLabelName] = useState<string | null>(
     () => {
+      const fromUrl = searchParams.get("label");
+      if (fromUrl) return fromUrl;
       try {
         return localStorage.getItem(LAST_LABEL_KEY);
       } catch {

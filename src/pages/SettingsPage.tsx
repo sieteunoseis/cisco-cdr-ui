@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Accordion,
   AccordionContent,
@@ -57,6 +58,7 @@ function isValidPattern(pattern: string): boolean {
 }
 
 export function SettingsPage() {
+  const navigate = useNavigate();
   const { rules, loading, error, add, update, remove, toggle, reset, importRules } =
     useLabelRules();
   const [form, setForm] = useState<RuleFormState>(EMPTY_FORM);
@@ -326,6 +328,20 @@ export function SettingsPage() {
                         </span>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
+                        {(rule.fields.includes("calling") ||
+                          rule.fields.includes("called")) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              navigate(
+                                `/seat-map?label=${encodeURIComponent(rule.label)}`,
+                              )
+                            }
+                          >
+                            DN Map
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
