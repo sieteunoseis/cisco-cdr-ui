@@ -28,6 +28,7 @@
 - [ ] Saved search filters (like saved SQL queries but for main search)
 - [ ] Bulk number search (paste a list of DNs, get all calls)
 - [ ] Time-of-day heatmap (when do most calls happen for a DN)
+- [ ] Fix filters. Example if i wanted to hide 0s calls and show just Analog labels. i would have to hide all the other labels. This is not intuitive. I should be able to just select the labels i want to see and hide the rest. This is a UX issue.
 
 ## Quality & Monitoring
 
@@ -73,7 +74,7 @@
 
 
 # Anomaly Detection
-- [ ] Detect call spikes (volume, failure rate, etc)
+- [x] Detect call spikes (volume, failure rate, etc)
 
 # Documentation Updates
 - [x] Update README with new features (MCP, Twilio etc)
