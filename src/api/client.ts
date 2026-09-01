@@ -386,6 +386,23 @@ export function checkAlerts() {
   return apiFetch<{ results: AlertCheckResult[] }>("/api/v1/alerts/check");
 }
 
+export interface AlertBreakdownEntry {
+  number: string;
+  current?: number;
+  prior?: number;
+  delta?: number;
+  total?: number;
+  failed?: number;
+  rate?: number;
+}
+
+export function getAlertBreakdown(id: string) {
+  return apiFetch<{
+    byCalling: AlertBreakdownEntry[];
+    byCalled: AlertBreakdownEntry[];
+  }>(`/api/v1/alerts/rules/${id}/breakdown`);
+}
+
 // DN map
 export interface SeatMapSeat {
   number: string;

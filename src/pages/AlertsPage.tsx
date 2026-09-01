@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,9 +10,11 @@ import {
   updateAlertRule,
   deleteAlertRule,
   checkAlerts,
+  getAlertBreakdown,
   type AlertRule,
   type AlertRuleType,
   type AlertCheckResult,
+  type AlertBreakdownEntry,
 } from "@/api/client";
 
 interface RuleFormState {
@@ -47,7 +50,56 @@ function formatThreshold(rule: AlertRule): string {
     : `${rule.threshold}%`;
 }
 
+interface BreakdownListProps {
+  title: string;
+  type: AlertRuleType;
+  entries: AlertBreakdownEntry[];
+  onNumberClick: (number: string) => void;
+}
+
+function BreakdownList({
+  title,
+  type,
+  entries,
+  onNumberClick,
+}: BreakdownListProps) {
+  return (
+    <div>
+      <h4 className="text-xs font-semibold text-muted-foreground mb-1.5">
+        {title}
+      </h4>
+      {entries.length === 0 ? (
+        <p className="text-xs text-muted-foreground">No data.</p>
+      ) : (
+        <ul className="space-y-1">
+          {entries.map((e) => (
+            <li
+              key={e.number}
+              className="flex items-center justify-between text-xs"
+            >
+              <button
+                type="button"
+                onClick={() => onNumberClick(e.number)}
+                className="font-mono text-primary hover:underline text-left"
+                title="View calls for this number"
+              >
+                {e.number}
+              </button>
+              <span className="text-muted-foreground shrink-0 ml-2">
+                {type === "volume_spike"
+                  ? `${e.current} now (+${e.delta} vs ${e.prior} prior)`
+                  : `${e.failed}/${e.total} failed (${e.rate}%)`}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export function AlertsPage() {
+  const navigate = useNavigate();
   const [rules, setRules] = useState<AlertRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,6 +110,34 @@ export function AlertsPage() {
   const [results, setResults] = useState<AlertCheckResult[]>([]);
   const [checking, setChecking] = useState(false);
   const [checkError, setCheckError] = useState<string | null>(null);
+
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [breakdown, setBreakdown] = useState<{
+    byCalling: AlertBreakdownEntry[];
+    byCalled: AlertBreakdownEntry[];
+  } | null>(null);
+  const [breakdownLoading, setBreakdownLoading] = useState(false);
+  const [breakdownError, setBreakdownError] = useState<string | null>(null);
+
+  const toggleBreakdown = (id: string) => {
+    if (expandedId === id) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(id);
+    setBreakdown(null);
+    setBreakdownError(null);
+    setBreakdownLoading(true);
+    getAlertBreakdown(id)
+      .then((res) => {
+        setBreakdown(res);
+        setBreakdownLoading(false);
+      })
+      .catch((err) => {
+        setBreakdownError(err instanceof Error ? err.message : String(err));
+        setBreakdownLoading(false);
+      });
+  };
 
   const loadRules = useCallback(() => {
     setLoading(true);
@@ -197,33 +277,78 @@ export function AlertsPage() {
             </p>
           )}
           {results.map((r) => (
-            <div
-              key={r.id}
-              className="flex items-center justify-between rounded-lg border border-border p-3 text-sm"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <span
-                  className={`text-xs px-2 py-0.5 rounded-full border ${
-                    r.triggered
-                      ? "border-destructive/40 bg-destructive/10 text-destructive"
-                      : "border-border text-muted-foreground"
-                  }`}
-                >
-                  {r.triggered ? "Triggered" : "OK"}
-                </span>
-                <span className="font-medium truncate">{r.name}</span>
-                <span className="text-xs text-muted-foreground">
-                  {TYPE_LABELS[r.type]} · last {r.window} · threshold{" "}
-                  {formatThreshold(r)}
-                </span>
+            <div key={r.id} className="rounded-lg border border-border p-3 text-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full border ${
+                      r.triggered
+                        ? "border-destructive/40 bg-destructive/10 text-destructive"
+                        : "border-border text-muted-foreground"
+                    }`}
+                  >
+                    {r.triggered ? "Triggered" : "OK"}
+                  </span>
+                  <span className="font-medium truncate">{r.name}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {TYPE_LABELS[r.type]} · last {r.window} · threshold{" "}
+                    {formatThreshold(r)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs text-muted-foreground">
+                    {r.type === "volume_spike"
+                      ? `${r.current} vs ${r.baseline} prior${
+                          r.value !== null ? ` (${r.value}x)` : ""
+                        }`
+                      : `${r.current}/${r.baseline} failed (${r.value}%)`}
+                  </span>
+                  {r.triggered && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => toggleBreakdown(r.id)}
+                    >
+                      {expandedId === r.id ? "Hide numbers" : "Show numbers"}
+                    </Button>
+                  )}
+                </div>
               </div>
-              <span className="text-xs text-muted-foreground shrink-0">
-                {r.type === "volume_spike"
-                  ? `${r.current} vs ${r.baseline} prior${
-                      r.value !== null ? ` (${r.value}x)` : ""
-                    }`
-                  : `${r.current}/${r.baseline} failed (${r.value}%)`}
-              </span>
+
+              {expandedId === r.id && (
+                <div className="mt-3 pt-3 border-t border-border grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {breakdownLoading && (
+                    <p className="text-xs text-muted-foreground sm:col-span-2">
+                      Loading…
+                    </p>
+                  )}
+                  {breakdownError && (
+                    <p className="text-xs text-destructive sm:col-span-2">
+                      {breakdownError}
+                    </p>
+                  )}
+                  {breakdown && (
+                    <>
+                      <BreakdownList
+                        title="Top Calling Numbers"
+                        type={r.type}
+                        entries={breakdown.byCalling}
+                        onNumberClick={(n) =>
+                          navigate(`/?q=${encodeURIComponent(n)}`)
+                        }
+                      />
+                      <BreakdownList
+                        title="Top Called Numbers"
+                        type={r.type}
+                        entries={breakdown.byCalled}
+                        onNumberClick={(n) =>
+                          navigate(`/?q=${encodeURIComponent(n)}`)
+                        }
+                      />
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </CardContent>
