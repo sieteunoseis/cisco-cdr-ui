@@ -84,9 +84,17 @@ export function SearchPage() {
   const enabledRules = useMemo(() => rules.filter((r) => r.enabled), [rules]);
   const visibleLabelRules = useMemo(() => {
     const q = labelSearch.trim().toLowerCase();
-    if (!q) return enabledRules;
-    return enabledRules.filter((r) => r.label.toLowerCase().includes(q));
-  }, [enabledRules, labelSearch]);
+    const matching = q
+      ? enabledRules.filter((r) => r.label.toLowerCase().includes(q))
+      : enabledRules;
+    // Selected labels first (stable within each group) so an active
+    // filter never scrolls out of view among 100+ others.
+    return [...matching].sort((a, b) => {
+      const aSelected = selectedFilterIds.includes(a.id) ? 0 : 1;
+      const bSelected = selectedFilterIds.includes(b.id) ? 0 : 1;
+      return aSelected - bSelected;
+    });
+  }, [enabledRules, labelSearch, selectedFilterIds]);
 
   // Prune selectedFilterIds of label ids for rules that no longer exist
   // (deleted, not just disabled) — leaves the fixed quick-filter ids alone.
