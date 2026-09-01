@@ -348,11 +348,24 @@ export function getNumplanSeats(pattern: string, page: number) {
 export interface NumplanDevice {
   name: string;
   description: string | null;
+  adminUrl: string | null;
 }
 
 export function getNumplanDevices(number: string) {
   return apiFetch<{ devices: NumplanDevice[] }>(
     `/api/v1/numplan/devices?number=${encodeURIComponent(number)}`,
+  );
+}
+
+export interface CallCounts {
+  last24h: number;
+  last7d: number;
+  last30d: number;
+}
+
+export function getNumplanCallCounts(numbers: string[]) {
+  return apiFetch<{ counts: Record<string, CallCounts> }>(
+    `/api/v1/numplan/call-counts?numbers=${encodeURIComponent(numbers.join(","))}`,
   );
 }
 

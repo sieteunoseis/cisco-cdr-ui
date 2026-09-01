@@ -6,9 +6,13 @@ import { useLabelRules } from "@/hooks/useLabelRules";
 import {
   getNumplanSeats,
   getNumplanDevices,
+  getNumplanCallCounts,
   type SeatMapResponse,
   type NumplanDevice,
+  type CallCounts,
 } from "@/api/client";
+
+type SeatFilter = "all" | "configured" | "unconfigured";
 
 const LAST_LABEL_KEY = "cdr-dn-map-last-label";
 
@@ -59,6 +63,10 @@ export function SeatMapPage() {
   const [deviceLookup, setDeviceLookup] = useState<DeviceLookupState | null>(
     null,
   );
+  const [filter, setFilter] = useState<SeatFilter>("all");
+  const [callCounts, setCallCounts] = useState<Record<string, CallCounts>>(
+    {},
+  );
 
   const numberRules = rules.filter(
     (r) => r.fields.includes("calling") || r.fields.includes("called"),
@@ -74,6 +82,8 @@ export function SeatMapPage() {
     setPage(1);
     setFlippedNumber(null);
     setDeviceLookup(null);
+
+    setFilter("all");
 
     const rule = numberRules.find((r) => r.id === id);
     setSelectedLabelName(rule ? rule.label : null);
@@ -167,6 +177,36 @@ export function SeatMapPage() {
     };
   }, [selectedId, page, rules]);
 
+  // Call volume per DN for the current page — fetched separately from the
+  // seat grid itself so a slow/failed count lookup never blocks rendering
+  // the grid.
+  useEffect(() => {
+    if (!state.data || !state.data.eligible) return;
+    const numbers = state.data.seats.map((s) => s.number);
+    if (numbers.length === 0) return;
+
+    let cancelled = false;
+    getNumplanCallCounts(numbers)
+      .then((res) => {
+        if (!cancelled) setCallCounts(res.counts);
+      })
+      .catch(() => {
+        // Leave prior counts in place — a failed lookup just means the
+        // tooltip falls back to showing no call-volume info for these seats.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [state.data]);
+
+  const allSeats =
+    state.data && state.data.eligible ? state.data.seats : [];
+  const visibleSeats = allSeats.filter((seat) => {
+    if (filter === "configured") return seat.configured;
+    if (filter === "unconfigured") return !seat.configured;
+    return true;
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -214,7 +254,8 @@ export function SeatMapPage() {
             <span className="text-sm text-muted-foreground">
               Prefix <code>{state.data.prefix || "(none)"}</code> ·{" "}
               {state.data.totalCount} numbers · Page {state.data.page} of{" "}
-              {state.data.totalPages}
+              {state.data.totalPages} · Pattern{" "}
+              <code>{selectedRule.pattern}</code>
             </span>
             <div className="flex items-center gap-2">
               <Button
@@ -236,9 +277,35 @@ export function SeatMapPage() {
             </div>
           </div>
 
+          <div className="flex items-center gap-1">
+            {(
+              [
+                ["all", "All"],
+                ["configured", "Configured"],
+                ["unconfigured", "Unconfigured"],
+              ] as [SeatFilter, string][]
+            ).map(([value, label]) => (
+              <Button
+                key={value}
+                variant={filter === value ? "default" : "outline"}
+                size="sm"
+                onClick={() => setFilter(value)}
+              >
+                {label}
+              </Button>
+            ))}
+            <span className="text-xs text-muted-foreground ml-1">
+              {visibleSeats.length} shown
+            </span>
+          </div>
+
           <div className="grid grid-cols-10 gap-1 [perspective:600px]">
-            {state.data.seats.map((seat) => {
+            {visibleSeats.map((seat) => {
               const isFlipped = flippedNumber === seat.number;
+              const counts = callCounts[seat.number];
+              const countsLabel = counts
+                ? ` · calls 24h ${counts.last24h} / 7d ${counts.last7d} / 30d ${counts.last30d}`
+                : "";
               return (
                 <div
                   key={seat.number}
@@ -248,9 +315,9 @@ export function SeatMapPage() {
                   }}
                   onClick={() => handleSeatClick(seat.number)}
                   title={
-                    seat.configured
+                    (seat.configured
                       ? `${seat.number} — ${seat.description ?? "Configured"}`
-                      : `${seat.number} — not configured`
+                      : `${seat.number} — not configured`) + countsLabel
                   }
                 >
                   <div
@@ -329,7 +396,19 @@ export function SeatMapPage() {
                 <ul className="space-y-1">
                   {deviceLookup.devices.map((d) => (
                     <li key={d.name} className="text-sm">
-                      <span className="font-mono">{d.name}</span>
+                      {d.adminUrl ? (
+                        <a
+                          href={d.adminUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-mono text-primary hover:underline"
+                          title="Open in CUCM admin"
+                        >
+                          {d.name}
+                        </a>
+                      ) : (
+                        <span className="font-mono">{d.name}</span>
+                      )}
                       {d.description && (
                         <span className="text-muted-foreground">
                           {" "}
