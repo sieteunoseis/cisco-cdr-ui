@@ -328,9 +328,11 @@ export type AlertRuleType =
   | "volume_spike"
   | "failure_rate"
   | "label_volume"
-  | "long_call";
+  | "long_call"
+  | "quality_degradation";
 
 export type AlertDirection = "above" | "below";
+export type AlertQualityMetric = "mos" | "jitter" | "latency" | "loss";
 
 export interface AlertRule {
   id: string;
@@ -341,6 +343,7 @@ export interface AlertRule {
   enabled: boolean;
   labelId: string | null;
   direction: AlertDirection;
+  metric: AlertQualityMetric | null;
   createdAt: string;
 }
 
@@ -364,6 +367,7 @@ export function createAlertRule(rule: {
   enabled: boolean;
   labelId?: string | null;
   direction?: AlertDirection;
+  metric?: AlertQualityMetric;
 }) {
   return apiFetch<{ rule: AlertRule }>("/api/v1/alerts/rules", {
     method: "POST",
@@ -381,6 +385,7 @@ export function updateAlertRule(
     enabled: boolean;
     labelId: string | null;
     direction: AlertDirection;
+    metric: AlertQualityMetric;
   }>,
 ) {
   return apiFetch<{ rule: AlertRule }>(`/api/v1/alerts/rules/${id}`, {
@@ -410,10 +415,14 @@ export interface AlertBreakdownEntry {
   count?: number;
 }
 
+// Shared shape for the two per-call (rather than per-number) breakdown
+// types: long_call sets durationSeconds, quality_degradation sets
+// metricValue.
 export interface LongCallEntry {
   callingNumber: string | null;
   calledNumber: string | null;
-  durationSeconds: number;
+  durationSeconds?: number;
+  metricValue?: number;
   datetimeOrigination: string;
   callId: string;
   callManagerId: string;

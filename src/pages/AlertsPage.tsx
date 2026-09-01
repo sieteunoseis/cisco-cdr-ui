@@ -16,6 +16,7 @@ import {
   type AlertRule,
   type AlertRuleType,
   type AlertDirection,
+  type AlertQualityMetric,
   type AlertCheckResult,
   type AlertBreakdownEntry,
   type LongCallEntry,
@@ -28,6 +29,7 @@ interface RuleFormState {
   threshold: string;
   labelId: string;
   direction: AlertDirection;
+  metric: AlertQualityMetric;
 }
 
 const EMPTY_FORM: RuleFormState = {
@@ -37,16 +39,23 @@ const EMPTY_FORM: RuleFormState = {
   threshold: "2",
   labelId: "",
   direction: "above",
+  metric: "mos",
 };
 
 const WINDOW_RE = /^\d+[mhdw]$/;
 
 // Types that accept an optional label scope (org-wide unless one is
 // chosen) as opposed to label_volume, where the label is the whole point.
-const LABEL_SCOPABLE_TYPES: AlertRuleType[] = ["volume_spike", "failure_rate"];
+const LABEL_SCOPABLE_TYPES: AlertRuleType[] = [
+  "volume_spike",
+  "failure_rate",
+  "quality_degradation",
+];
 // Types where "above vs. below the threshold" is a meaningful choice —
 // failure_rate/long_call only make sense as "above" (a low failure rate or
-// a call that stayed short isn't alert-worthy).
+// a call that stayed short isn't alert-worthy). quality_degradation's
+// direction is implied by the chosen metric instead (MOS: worse = lower;
+// jitter/latency/loss: worse = higher), so it's not in this list either.
 const DIRECTION_TYPES: AlertRuleType[] = ["volume_spike", "label_volume"];
 
 const TYPE_LABELS: Record<AlertRuleType, string> = {
@@ -54,9 +63,38 @@ const TYPE_LABELS: Record<AlertRuleType, string> = {
   failure_rate: "Failure Rate",
   label_volume: "Label Volume",
   long_call: "Long Call",
+  quality_degradation: "Quality Degradation",
 };
 
-function thresholdHint(type: AlertRuleType, direction: AlertDirection): string {
+const METRIC_LABELS: Record<AlertQualityMetric, string> = {
+  mos: "MOS",
+  jitter: "Jitter",
+  latency: "Latency",
+  loss: "Packet Loss",
+};
+
+function formatMetricValue(
+  metric: AlertQualityMetric | null | undefined,
+  value: number,
+): string {
+  switch (metric) {
+    case "mos":
+      return value.toFixed(2);
+    case "jitter":
+    case "latency":
+      return `${Math.round(value)}ms`;
+    case "loss":
+      return `${Math.round(value)} pkts`;
+    default:
+      return String(value);
+  }
+}
+
+function thresholdHint(
+  type: AlertRuleType,
+  direction: AlertDirection,
+  metric: AlertQualityMetric,
+): string {
   const below = direction === "below";
   switch (type) {
     case "volume_spike":
@@ -71,6 +109,17 @@ function thresholdHint(type: AlertRuleType, direction: AlertDirection): string {
         : "Count — e.g. 50 means alert if 50 or more calls match the chosen label in the window";
     case "long_call":
       return "Seconds — e.g. 3600 means alert if any call in the window exceeds 1 hour";
+    case "quality_degradation":
+      switch (metric) {
+        case "mos":
+          return "MOS score — e.g. 3.5 means alert if any call's MOS drops below 3.5";
+        case "jitter":
+          return "Milliseconds — e.g. 50 means alert if any call's jitter exceeds 50ms";
+        case "latency":
+          return "Milliseconds — e.g. 150 means alert if any call's latency exceeds 150ms";
+        case "loss":
+          return "Packets — e.g. 10 means alert if any call loses more than 10 packets";
+      }
   }
 }
 
@@ -85,6 +134,10 @@ function formatThreshold(rule: AlertRule): string {
       return `${below ? "<" : "≥"}${rule.threshold} calls`;
     case "long_call":
       return formatDuration(rule.threshold);
+    case "quality_degradation": {
+      const worse = rule.metric === "mos" ? "<" : ">";
+      return `${rule.metric ? METRIC_LABELS[rule.metric] : "metric"} ${worse} ${formatMetricValue(rule.metric, rule.threshold)}`;
+    }
   }
 }
 
@@ -140,10 +193,11 @@ function BreakdownList({
 
 interface LongCallListProps {
   calls: LongCallEntry[];
+  metric?: AlertQualityMetric | null;
   onNumberClick: (number: string) => void;
 }
 
-function LongCallList({ calls, onNumberClick }: LongCallListProps) {
+function LongCallList({ calls, metric, onNumberClick }: LongCallListProps) {
   if (calls.length === 0) {
     return <p className="text-xs text-muted-foreground">No data.</p>;
   }
@@ -174,7 +228,9 @@ function LongCallList({ calls, onNumberClick }: LongCallListProps) {
             </button>
           </span>
           <span className="text-muted-foreground shrink-0 ml-2">
-            {formatDuration(c.durationSeconds)}
+            {metric
+              ? formatMetricValue(metric, c.metricValue ?? 0)
+              : formatDuration(c.durationSeconds ?? 0)}
           </span>
         </li>
       ))}
@@ -276,6 +332,7 @@ export function AlertsPage() {
       threshold: String(rule.threshold),
       labelId: rule.labelId ?? "",
       direction: rule.direction,
+      metric: rule.metric ?? "mos",
     });
   };
 
@@ -293,6 +350,7 @@ export function AlertsPage() {
       threshold: thresholdNum,
       direction: form.direction,
       labelId: form.labelId || null,
+      metric: form.metric,
     };
     const action = editingId
       ? updateAlertRule(editingId, payload)
@@ -405,6 +463,12 @@ export function AlertsPage() {
                           ? ` (max ${formatDuration(r.value)})`
                           : ""
                       }`}
+                    {r.type === "quality_degradation" &&
+                      `${r.current} of ${r.baseline} calls${
+                        r.value !== null
+                          ? ` (worst ${formatMetricValue(r.metric, r.value)})`
+                          : ""
+                      }${r.labelName ? ` — ${r.labelName}` : ""}`}
                   </span>
                   {r.triggered && (
                     <Button
@@ -430,15 +494,22 @@ export function AlertsPage() {
                       {breakdownError}
                     </p>
                   )}
-                  {breakdown && r.type === "long_call" && (
-                    <LongCallList
-                      calls={breakdown.calls ?? []}
-                      onNumberClick={(n) =>
-                        navigate(`/?q=${encodeURIComponent(n)}`)
-                      }
-                    />
-                  )}
-                  {breakdown && r.type !== "long_call" && (
+                  {breakdown &&
+                    (r.type === "long_call" ||
+                      r.type === "quality_degradation") && (
+                      <LongCallList
+                        calls={breakdown.calls ?? []}
+                        metric={
+                          r.type === "quality_degradation" ? r.metric : null
+                        }
+                        onNumberClick={(n) =>
+                          navigate(`/?q=${encodeURIComponent(n)}`)
+                        }
+                      />
+                    )}
+                  {breakdown &&
+                    r.type !== "long_call" &&
+                    r.type !== "quality_degradation" && (
                     <>
                       <BreakdownList
                         title="Top Calling Numbers"
@@ -511,8 +582,34 @@ export function AlertsPage() {
               <option value="failure_rate">Failure Rate</option>
               <option value="label_volume">Label Volume</option>
               <option value="long_call">Long Call</option>
+              <option value="quality_degradation">Quality Degradation</option>
             </select>
           </div>
+          {form.type === "quality_degradation" && (
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">
+                Metric
+              </label>
+              <select
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={form.metric}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    metric: e.target.value as AlertQualityMetric,
+                  }))
+                }
+              >
+                {(Object.keys(METRIC_LABELS) as AlertQualityMetric[]).map(
+                  (m) => (
+                    <option key={m} value={m}>
+                      {METRIC_LABELS[m]}
+                    </option>
+                  ),
+                )}
+              </select>
+            </div>
+          )}
           {(form.type === "label_volume" ||
             LABEL_SCOPABLE_TYPES.includes(form.type)) && (
             <div>
@@ -597,7 +694,7 @@ export function AlertsPage() {
           </div>
         </div>
         <p className="text-xs text-muted-foreground">
-          {thresholdHint(form.type, form.direction)}
+          {thresholdHint(form.type, form.direction, form.metric)}
         </p>
         <div className="flex items-center gap-2">
           <Button size="sm" disabled={!canSave} onClick={handleSave}>
