@@ -189,72 +189,6 @@ export function SettingsPage() {
         </div>
       )}
 
-      {loading ? (
-        <p className="text-sm text-muted-foreground">Loading rules…</p>
-      ) : (
-        <div className="space-y-2">
-          {rules.map((rule) => (
-            <div
-              key={rule.id}
-              className="flex items-center justify-between rounded-lg border border-border p-3"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <Switch
-                  checked={rule.enabled}
-                  onCheckedChange={() =>
-                    toggle(rule.id).catch((err) =>
-                      setImportError(
-                        err instanceof Error ? err.message : "Update failed.",
-                      ),
-                    )
-                  }
-                />
-                <span
-                  className={`text-xs px-2 py-0.5 rounded-full border ${BADGE_PALETTE[rule.color]}`}
-                >
-                  {rule.label}
-                </span>
-                <span className="text-xs text-muted-foreground truncate">
-                  {rule.fields.join(", ")} · <code>{rule.pattern}</code>
-                </span>
-              </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => startEdit(rule)}
-                >
-                  Edit
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    remove(rule.id)
-                      .then(() => {
-                        if (editingId === rule.id) cancelEdit();
-                      })
-                      .catch((err) =>
-                        setImportError(
-                          err instanceof Error ? err.message : "Delete failed.",
-                        ),
-                      );
-                  }}
-                >
-                  Delete
-                </Button>
-              </div>
-            </div>
-          ))}
-          {rules.length === 0 && (
-            <p className="text-sm text-muted-foreground">
-              No label rules yet. Add one below — for example, an "Internal"
-              rule matching your own trunk or gateway device-name convention.
-            </p>
-          )}
-        </div>
-      )}
-
       <div className="rounded-lg border border-border p-4 space-y-3">
         <h3 className="text-sm font-semibold">
           {editingId ? "Edit Rule" : "Add Rule"}
@@ -342,6 +276,72 @@ export function SettingsPage() {
           )}
         </div>
       </div>
+
+      {loading ? (
+        <p className="text-sm text-muted-foreground">Loading rules…</p>
+      ) : (
+        <div className="space-y-2">
+          {rules.map((rule) => (
+            <div
+              key={rule.id}
+              className="flex items-center justify-between rounded-lg border border-border p-3"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <Switch
+                  checked={rule.enabled}
+                  onCheckedChange={() =>
+                    toggle(rule.id).catch((err) =>
+                      setImportError(
+                        err instanceof Error ? err.message : "Update failed.",
+                      ),
+                    )
+                  }
+                />
+                <span
+                  className={`text-xs px-2 py-0.5 rounded-full border ${BADGE_PALETTE[rule.color]}`}
+                >
+                  {rule.label}
+                </span>
+                <span className="text-xs text-muted-foreground truncate">
+                  {rule.fields.join(", ")} · <code>{rule.pattern}</code>
+                </span>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => startEdit(rule)}
+                >
+                  Edit
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    remove(rule.id)
+                      .then(() => {
+                        if (editingId === rule.id) cancelEdit();
+                      })
+                      .catch((err) =>
+                        setImportError(
+                          err instanceof Error ? err.message : "Delete failed.",
+                        ),
+                      );
+                  }}
+                >
+                  Delete
+                </Button>
+              </div>
+            </div>
+          ))}
+          {rules.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              No label rules yet. Add one above — for example, an "Internal"
+              rule matching your own trunk or gateway device-name convention.
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
