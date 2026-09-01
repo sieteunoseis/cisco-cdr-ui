@@ -320,3 +320,26 @@ export function resetLabels() {
     method: "POST",
   });
 }
+
+// DID seat map
+export interface SeatMapSeat {
+  number: string;
+  configured: boolean;
+  description: string | null;
+}
+
+export type SeatMapResponse =
+  | { eligible: false }
+  | {
+      eligible: true;
+      totalCount: number;
+      totalPages: number;
+      page: number;
+      seats: SeatMapSeat[];
+    };
+
+export function getNumplanSeats(pattern: string, page: number) {
+  return apiFetch<SeatMapResponse>(
+    `/api/v1/numplan/seats?pattern=${encodeURIComponent(pattern)}&page=${page}`,
+  );
+}
