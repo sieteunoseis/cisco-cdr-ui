@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useSearchParams, useLocation } from "react-router-dom";
+import { X } from "lucide-react";
 import { SearchBar } from "@/components/search/SearchBar";
 import { TimeRange } from "@/components/search/TimeRange";
 import {
@@ -17,7 +18,6 @@ import { useSearch } from "@/hooks/useSearch";
 import { useLabelRules } from "@/hooks/useLabelRules";
 import { matchLabelRules } from "@/lib/labelRules";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import {
   checkStarred,
   starCall,
@@ -537,41 +537,56 @@ export function SearchPage() {
                 </Button>
                 {filtersOpen && (
                   <div className="absolute right-0 top-8 z-50 rounded-lg border border-border bg-popover p-3 shadow-lg space-y-2.5 w-64">
-                    <label className="flex items-center justify-between cursor-pointer text-xs">
-                      <span>Hide recording ({hiddenCounts.recording})</span>
-                      <Switch
-                        checked={hideRecording}
-                        onCheckedChange={setHideRecording}
-                      />
-                    </label>
-                    <label className="flex items-center justify-between cursor-pointer text-xs">
-                      <span>Hide 0s calls ({hiddenCounts.zeroDuration})</span>
-                      <Switch
-                        checked={hideZeroDuration}
-                        onCheckedChange={setHideZeroDuration}
-                      />
-                    </label>
-                    <label className="flex items-center justify-between cursor-pointer text-xs">
-                      <span>Hide transfers ({hiddenCounts.transfer})</span>
-                      <Switch
-                        checked={hideTransfer}
-                        onCheckedChange={setHideTransfer}
-                      />
-                    </label>
-                    <label className="flex items-center justify-between cursor-pointer text-xs">
-                      <span>Hide conferences ({hiddenCounts.conference})</span>
-                      <Switch
-                        checked={hideConference}
-                        onCheckedChange={setHideConference}
-                      />
-                    </label>
-                    <label className="flex items-center justify-between cursor-pointer text-xs">
-                      <span>Phones only</span>
-                      <Switch
-                        checked={phonesOnly}
-                        onCheckedChange={setPhonesOnly}
-                      />
-                    </label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(
+                        [
+                          {
+                            key: "recording",
+                            label: `Recording (${hiddenCounts.recording})`,
+                            active: hideRecording,
+                            toggle: () => setHideRecording((v: boolean) => !v),
+                          },
+                          {
+                            key: "zero",
+                            label: `0s calls (${hiddenCounts.zeroDuration})`,
+                            active: hideZeroDuration,
+                            toggle: () => setHideZeroDuration((v: boolean) => !v),
+                          },
+                          {
+                            key: "transfer",
+                            label: `Transfers (${hiddenCounts.transfer})`,
+                            active: hideTransfer,
+                            toggle: () => setHideTransfer((v: boolean) => !v),
+                          },
+                          {
+                            key: "conference",
+                            label: `Conferences (${hiddenCounts.conference})`,
+                            active: hideConference,
+                            toggle: () => setHideConference((v: boolean) => !v),
+                          },
+                          {
+                            key: "phones",
+                            label: "Phones only",
+                            active: phonesOnly,
+                            toggle: () => setPhonesOnly((v: boolean) => !v),
+                          },
+                        ] as const
+                      ).map((f) => (
+                        <button
+                          key={f.key}
+                          type="button"
+                          onClick={f.toggle}
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs ${
+                            f.active
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "text-muted-foreground border-border hover:border-foreground"
+                          }`}
+                        >
+                          {f.active && <X className="size-3" />}
+                          {f.label}
+                        </button>
+                      ))}
+                    </div>
                     <div className="border-t border-border pt-2 space-y-1">
                       <button
                         type="button"
@@ -615,19 +630,26 @@ export function SearchPage() {
                               No custom rules defined.
                             </p>
                           )}
-                          {enabledRules.map((rule) => (
-                            <label
-                              key={rule.id}
-                              className="flex items-center gap-2 text-xs cursor-pointer"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={tagFilterIds.includes(rule.id)}
-                                onChange={() => toggleTagFilter(rule.id)}
-                              />
-                              {rule.label} ({tagCounts[rule.id] ?? 0})
-                            </label>
-                          ))}
+                          <div className="flex flex-wrap gap-1.5">
+                            {enabledRules.map((rule) => {
+                              const selected = tagFilterIds.includes(rule.id);
+                              return (
+                                <button
+                                  key={rule.id}
+                                  type="button"
+                                  onClick={() => toggleTagFilter(rule.id)}
+                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs ${
+                                    selected
+                                      ? "bg-primary text-primary-foreground border-primary"
+                                      : "text-muted-foreground border-border hover:border-foreground"
+                                  }`}
+                                >
+                                  {selected && <X className="size-3" />}
+                                  {rule.label} ({tagCounts[rule.id] ?? 0})
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
                       )}
                     </div>
