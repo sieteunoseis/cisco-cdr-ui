@@ -4,6 +4,8 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { formatDuration } from "@/lib/format";
+import { useLabelRules } from "@/hooks/useLabelRules";
 import {
   getAlertRules,
   createAlertRule,
@@ -15,6 +17,7 @@ import {
   type AlertRuleType,
   type AlertCheckResult,
   type AlertBreakdownEntry,
+  type LongCallEntry,
 } from "@/api/client";
 
 interface RuleFormState {
@@ -22,6 +25,7 @@ interface RuleFormState {
   type: AlertRuleType;
   window: string;
   threshold: string;
+  labelId: string;
 }
 
 const EMPTY_FORM: RuleFormState = {
@@ -29,6 +33,7 @@ const EMPTY_FORM: RuleFormState = {
   type: "volume_spike",
   window: "1h",
   threshold: "2",
+  labelId: "",
 };
 
 const WINDOW_RE = /^\d+[mhdw]$/;
@@ -36,18 +41,34 @@ const WINDOW_RE = /^\d+[mhdw]$/;
 const TYPE_LABELS: Record<AlertRuleType, string> = {
   volume_spike: "Volume Spike",
   failure_rate: "Failure Rate",
+  label_volume: "Label Volume",
+  long_call: "Long Call",
 };
 
 function thresholdHint(type: AlertRuleType): string {
-  return type === "volume_spike"
-    ? "Multiplier — e.g. 2 means alert if call volume is 2x the prior window"
-    : "Percent — e.g. 20 means alert if 20% or more of calls failed";
+  switch (type) {
+    case "volume_spike":
+      return "Multiplier — e.g. 2 means alert if call volume is 2x the prior window";
+    case "failure_rate":
+      return "Percent — e.g. 20 means alert if 20% or more of calls failed";
+    case "label_volume":
+      return "Count — e.g. 50 means alert if 50 or more calls match the chosen label in the window";
+    case "long_call":
+      return "Seconds — e.g. 3600 means alert if any call in the window exceeds 1 hour";
+  }
 }
 
 function formatThreshold(rule: AlertRule): string {
-  return rule.type === "volume_spike"
-    ? `${rule.threshold}x`
-    : `${rule.threshold}%`;
+  switch (rule.type) {
+    case "volume_spike":
+      return `${rule.threshold}x`;
+    case "failure_rate":
+      return `${rule.threshold}%`;
+    case "label_volume":
+      return `${rule.threshold} calls`;
+    case "long_call":
+      return formatDuration(rule.threshold);
+  }
 }
 
 interface BreakdownListProps {
@@ -86,9 +107,11 @@ function BreakdownList({
                 {e.number}
               </button>
               <span className="text-muted-foreground shrink-0 ml-2">
-                {type === "volume_spike"
-                  ? `${e.current} now (+${e.delta} vs ${e.prior} prior)`
-                  : `${e.failed}/${e.total} failed (${e.rate}%)`}
+                {type === "volume_spike" &&
+                  `${e.current} now (+${e.delta} vs ${e.prior} prior)`}
+                {type === "failure_rate" &&
+                  `${e.failed}/${e.total} failed (${e.rate}%)`}
+                {type === "label_volume" && `${e.count} calls`}
               </span>
             </li>
           ))}
@@ -98,8 +121,53 @@ function BreakdownList({
   );
 }
 
+interface LongCallListProps {
+  calls: LongCallEntry[];
+  onNumberClick: (number: string) => void;
+}
+
+function LongCallList({ calls, onNumberClick }: LongCallListProps) {
+  if (calls.length === 0) {
+    return <p className="text-xs text-muted-foreground">No data.</p>;
+  }
+  return (
+    <ul className="space-y-1 sm:col-span-2">
+      {calls.map((c) => (
+        <li
+          key={c.callId}
+          className="flex items-center justify-between text-xs"
+        >
+          <span className="font-mono">
+            <button
+              type="button"
+              onClick={() => c.callingNumber && onNumberClick(c.callingNumber)}
+              className="text-primary hover:underline"
+              title="View calls for this number"
+            >
+              {c.callingNumber ?? "—"}
+            </button>
+            <span className="text-muted-foreground mx-1">→</span>
+            <button
+              type="button"
+              onClick={() => c.calledNumber && onNumberClick(c.calledNumber)}
+              className="text-primary hover:underline"
+              title="View calls for this number"
+            >
+              {c.calledNumber ?? "—"}
+            </button>
+          </span>
+          <span className="text-muted-foreground shrink-0 ml-2">
+            {formatDuration(c.durationSeconds)}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function AlertsPage() {
   const navigate = useNavigate();
+  const { rules: labelRules } = useLabelRules();
   const [rules, setRules] = useState<AlertRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -113,8 +181,9 @@ export function AlertsPage() {
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [breakdown, setBreakdown] = useState<{
-    byCalling: AlertBreakdownEntry[];
-    byCalled: AlertBreakdownEntry[];
+    byCalling?: AlertBreakdownEntry[];
+    byCalled?: AlertBreakdownEntry[];
+    calls?: LongCallEntry[];
   } | null>(null);
   const [breakdownLoading, setBreakdownLoading] = useState(false);
   const [breakdownError, setBreakdownError] = useState<string | null>(null);
@@ -177,7 +246,9 @@ export function AlertsPage() {
   const windowValid = WINDOW_RE.test(form.window.trim());
   const thresholdNum = Number(form.threshold);
   const thresholdValid = Number.isFinite(thresholdNum) && thresholdNum > 0;
-  const canSave = form.name.trim() !== "" && windowValid && thresholdValid;
+  const labelValid = form.type !== "label_volume" || form.labelId !== "";
+  const canSave =
+    form.name.trim() !== "" && windowValid && thresholdValid && labelValid;
 
   const startEdit = (rule: AlertRule) => {
     setEditingId(rule.id);
@@ -186,6 +257,7 @@ export function AlertsPage() {
       type: rule.type,
       window: rule.window,
       threshold: String(rule.threshold),
+      labelId: rule.labelId ?? "",
     });
   };
 
@@ -201,6 +273,7 @@ export function AlertsPage() {
       type: form.type,
       window: form.window.trim(),
       threshold: thresholdNum,
+      ...(form.type === "label_volume" ? { labelId: form.labelId } : {}),
     };
     const action = editingId
       ? updateAlertRule(editingId, payload)
@@ -297,11 +370,20 @@ export function AlertsPage() {
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="text-xs text-muted-foreground">
-                    {r.type === "volume_spike"
-                      ? `${r.current} vs ${r.baseline} prior${
-                          r.value !== null ? ` (${r.value}x)` : ""
-                        }`
-                      : `${r.current}/${r.baseline} failed (${r.value}%)`}
+                    {r.type === "volume_spike" &&
+                      `${r.current} vs ${r.baseline} prior${
+                        r.value !== null ? ` (${r.value}x)` : ""
+                      }`}
+                    {r.type === "failure_rate" &&
+                      `${r.current}/${r.baseline} failed (${r.value}%)`}
+                    {r.type === "label_volume" &&
+                      `${r.current} of ${r.baseline} matched "${r.labelName ?? "label"}"`}
+                    {r.type === "long_call" &&
+                      `${r.current} over threshold${
+                        r.value !== null
+                          ? ` (max ${formatDuration(r.value)})`
+                          : ""
+                      }`}
                   </span>
                   {r.triggered && (
                     <Button
@@ -327,12 +409,20 @@ export function AlertsPage() {
                       {breakdownError}
                     </p>
                   )}
-                  {breakdown && (
+                  {breakdown && r.type === "long_call" && (
+                    <LongCallList
+                      calls={breakdown.calls ?? []}
+                      onNumberClick={(n) =>
+                        navigate(`/?q=${encodeURIComponent(n)}`)
+                      }
+                    />
+                  )}
+                  {breakdown && r.type !== "long_call" && (
                     <>
                       <BreakdownList
                         title="Top Calling Numbers"
                         type={r.type}
-                        entries={breakdown.byCalling}
+                        entries={breakdown.byCalling ?? []}
                         onNumberClick={(n) =>
                           navigate(`/?q=${encodeURIComponent(n)}`)
                         }
@@ -340,7 +430,7 @@ export function AlertsPage() {
                       <BreakdownList
                         title="Top Called Numbers"
                         type={r.type}
-                        entries={breakdown.byCalled}
+                        entries={breakdown.byCalled ?? []}
                         onNumberClick={(n) =>
                           navigate(`/?q=${encodeURIComponent(n)}`)
                         }
@@ -398,8 +488,32 @@ export function AlertsPage() {
             >
               <option value="volume_spike">Volume Spike</option>
               <option value="failure_rate">Failure Rate</option>
+              <option value="label_volume">Label Volume</option>
+              <option value="long_call">Long Call</option>
             </select>
           </div>
+          {form.type === "label_volume" && (
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">
+                Label
+              </label>
+              <select
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={form.labelId}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, labelId: e.target.value }))
+                }
+                aria-invalid={!labelValid}
+              >
+                <option value="">Select a label…</option>
+                {labelRules.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">
               Window

@@ -324,7 +324,11 @@ export function resetLabels() {
 }
 
 // Alert rules
-export type AlertRuleType = "volume_spike" | "failure_rate";
+export type AlertRuleType =
+  | "volume_spike"
+  | "failure_rate"
+  | "label_volume"
+  | "long_call";
 
 export interface AlertRule {
   id: string;
@@ -333,6 +337,7 @@ export interface AlertRule {
   window: string;
   threshold: number;
   enabled: boolean;
+  labelId: string | null;
   createdAt: string;
 }
 
@@ -341,6 +346,7 @@ export interface AlertCheckResult extends AlertRule {
   current: number;
   baseline: number;
   value: number | null;
+  labelName?: string;
 }
 
 export function getAlertRules() {
@@ -353,6 +359,7 @@ export function createAlertRule(rule: {
   window: string;
   threshold: number;
   enabled: boolean;
+  labelId?: string;
 }) {
   return apiFetch<{ rule: AlertRule }>("/api/v1/alerts/rules", {
     method: "POST",
@@ -368,6 +375,7 @@ export function updateAlertRule(
     window: string;
     threshold: number;
     enabled: boolean;
+    labelId: string;
   }>,
 ) {
   return apiFetch<{ rule: AlertRule }>(`/api/v1/alerts/rules/${id}`, {
@@ -394,12 +402,23 @@ export interface AlertBreakdownEntry {
   total?: number;
   failed?: number;
   rate?: number;
+  count?: number;
+}
+
+export interface LongCallEntry {
+  callingNumber: string | null;
+  calledNumber: string | null;
+  durationSeconds: number;
+  datetimeOrigination: string;
+  callId: string;
+  callManagerId: string;
 }
 
 export function getAlertBreakdown(id: string) {
   return apiFetch<{
-    byCalling: AlertBreakdownEntry[];
-    byCalled: AlertBreakdownEntry[];
+    byCalling?: AlertBreakdownEntry[];
+    byCalled?: AlertBreakdownEntry[];
+    calls?: LongCallEntry[];
   }>(`/api/v1/alerts/rules/${id}/breakdown`);
 }
 
