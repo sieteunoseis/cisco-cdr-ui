@@ -65,6 +65,7 @@ export function SettingsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLDivElement>(null);
 
   const patternValid =
     form.pattern.trim() === "" || isValidPattern(form.pattern);
@@ -82,6 +83,7 @@ export function SettingsPage() {
       fields: rule.fields,
       pattern: rule.pattern,
     });
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   const cancelEdit = () => {
@@ -205,7 +207,10 @@ export function SettingsPage() {
                 </div>
               )}
 
-              <div className="rounded-lg border border-border p-4 space-y-3">
+              <div
+                ref={formRef}
+                className="rounded-lg border border-border p-4 space-y-3"
+              >
                 <h3 className="text-sm font-semibold">
                   {editingId ? "Edit Rule" : "Add Rule"}
                 </h3>
