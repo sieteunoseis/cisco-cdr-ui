@@ -29,6 +29,7 @@
 - [ ] Bulk number search (paste a list of DNs, get all calls)
 - [ ] Time-of-day heatmap (when do most calls happen for a DN)
 - [ ] Fix filters. Example if i wanted to hide 0s calls and show just Analog labels. i would have to hide all the other labels. This is not intuitive. I should be able to just select the labels i want to see and hide the rest. This is a UX issue.
+- [ ] Migrate the hardcoded "Recording" filter (isRecordingLeg in ResultRow.tsx) to a real label — pattern is OHSU-specific (Inform/Record/BIB device naming), so it's not portable to other deployments as-is. Phones-only filter is the same story (device-name prefix regex, already expressible as a label). Do this together with the filter UX fix above — once Recording is a label, "Hide recording" collapses into the same hide-tags mechanism instead of being a separate hardcoded checkbox. Transfer/Conference stay hardcoded (they match numeric on-behalf-of CDR fields, not the string fields label_rules currently supports).
 
 ## Quality & Monitoring
 
