@@ -1,4 +1,10 @@
 import { useRef, useState } from "react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -137,211 +143,231 @@ export function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Custom Label Rules</h2>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleExport}>
-            Export Rules
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            Import Rules
-          </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="application/json"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleImportFile(file);
-              e.target.value = "";
-            }}
-          />
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() =>
-              reset().catch((err) =>
-                setImportError(
-                  err instanceof Error ? err.message : "Reset failed.",
-                ),
-              )
-            }
-          >
-            Reset to Defaults
-          </Button>
-        </div>
-      </div>
-
-      {error && (
-        <div className="rounded-lg bg-destructive/10 p-3 text-destructive text-sm">
-          Couldn't load label rules from the server: {error}
-        </div>
-      )}
-
-      {importError && (
-        <div className="rounded-lg bg-destructive/10 p-3 text-destructive text-sm">
-          {importError}
-        </div>
-      )}
-
-      <div className="rounded-lg border border-border p-4 space-y-3">
-        <h3 className="text-sm font-semibold">
-          {editingId ? "Edit Rule" : "Add Rule"}
-        </h3>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">
-              Label
-            </label>
-            <Input
-              value={form.label}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, label: e.target.value }))
-              }
-              placeholder="e.g. Internal"
-            />
-          </div>
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">
-              Color
-            </label>
-            <div className="flex items-center gap-1.5">
-              {COLOR_OPTIONS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setForm((f) => ({ ...f, color: c }))}
-                  className={`h-6 w-6 rounded-full border-2 ${BADGE_PALETTE[c]} ${
-                    form.color === c
-                      ? "border-foreground"
-                      : "border-transparent"
-                  }`}
-                  title={c}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-        <div>
-          <label className="text-xs text-muted-foreground mb-1 block">
-            Match fields
-          </label>
-          <div className="flex flex-wrap gap-3">
-            {FIELD_OPTIONS.map((opt) => (
-              <label
-                key={opt.value}
-                className="flex items-center gap-1.5 text-sm cursor-pointer"
-              >
-                <input
-                  type="checkbox"
-                  checked={form.fields.includes(opt.value)}
-                  onChange={() => toggleField(opt.value)}
-                />
-                {opt.label}
-              </label>
-            ))}
-          </div>
-        </div>
-        <div>
-          <label className="text-xs text-muted-foreground mb-1 block">
-            Regex Pattern
-          </label>
-          <Input
-            value={form.pattern}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, pattern: e.target.value }))
-            }
-            placeholder="e.g. ^(ATA|AN[0-9A-F])"
-            aria-invalid={!patternValid}
-          />
-          {!patternValid && (
-            <p className="text-xs text-destructive mt-1">
-              Invalid regular expression.
-            </p>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <Button size="sm" disabled={!canSave} onClick={handleSave}>
-            {editingId ? "Save Changes" : "Add Rule"}
-          </Button>
-          {editingId && (
-            <Button variant="outline" size="sm" onClick={cancelEdit}>
-              Cancel
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {loading ? (
-        <p className="text-sm text-muted-foreground">Loading rules…</p>
-      ) : (
-        <div className="space-y-2">
-          {rules.map((rule) => (
-            <div
-              key={rule.id}
-              className="flex items-center justify-between rounded-lg border border-border p-3"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <Switch
-                  checked={rule.enabled}
-                  onCheckedChange={() =>
-                    toggle(rule.id).catch((err) =>
-                      setImportError(
-                        err instanceof Error ? err.message : "Update failed.",
-                      ),
-                    )
-                  }
-                />
-                <span
-                  className={`text-xs px-2 py-0.5 rounded-full border ${BADGE_PALETTE[rule.color]}`}
-                >
-                  {rule.label}
-                </span>
-                <span className="text-xs text-muted-foreground truncate">
-                  {rule.fields.join(", ")} · <code>{rule.pattern}</code>
-                </span>
-              </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => startEdit(rule)}
-                >
-                  Edit
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    remove(rule.id)
-                      .then(() => {
-                        if (editingId === rule.id) cancelEdit();
-                      })
-                      .catch((err) =>
+      <Accordion defaultValue={["labels"]}>
+        <AccordionItem value="labels">
+          <AccordionTrigger className="text-base font-semibold">
+            Custom Label Rules
+          </AccordionTrigger>
+          <AccordionContent>
+            <div className="space-y-6">
+              <div className="flex items-center justify-end">
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={handleExport}>
+                    Export Rules
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    Import Rules
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="application/json"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleImportFile(file);
+                      e.target.value = "";
+                    }}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      reset().catch((err) =>
                         setImportError(
-                          err instanceof Error ? err.message : "Delete failed.",
+                          err instanceof Error
+                            ? err.message
+                            : "Reset failed.",
                         ),
-                      );
-                  }}
-                >
-                  Delete
-                </Button>
+                      )
+                    }
+                  >
+                    Reset to Defaults
+                  </Button>
+                </div>
               </div>
+
+              {error && (
+                <div className="rounded-lg bg-destructive/10 p-3 text-destructive text-sm">
+                  Couldn't load label rules from the server: {error}
+                </div>
+              )}
+
+              {importError && (
+                <div className="rounded-lg bg-destructive/10 p-3 text-destructive text-sm">
+                  {importError}
+                </div>
+              )}
+
+              <div className="rounded-lg border border-border p-4 space-y-3">
+                <h3 className="text-sm font-semibold">
+                  {editingId ? "Edit Rule" : "Add Rule"}
+                </h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">
+                      Label
+                    </label>
+                    <Input
+                      value={form.label}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, label: e.target.value }))
+                      }
+                      placeholder="e.g. Internal"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">
+                      Color
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      {COLOR_OPTIONS.map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setForm((f) => ({ ...f, color: c }))}
+                          className={`h-6 w-6 rounded-full border-2 ${BADGE_PALETTE[c]} ${
+                            form.color === c
+                              ? "border-foreground"
+                              : "border-transparent"
+                          }`}
+                          title={c}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">
+                    Match fields
+                  </label>
+                  <div className="flex flex-wrap gap-3">
+                    {FIELD_OPTIONS.map((opt) => (
+                      <label
+                        key={opt.value}
+                        className="flex items-center gap-1.5 text-sm cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={form.fields.includes(opt.value)}
+                          onChange={() => toggleField(opt.value)}
+                        />
+                        {opt.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">
+                    Regex Pattern
+                  </label>
+                  <Input
+                    value={form.pattern}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, pattern: e.target.value }))
+                    }
+                    placeholder="e.g. ^(ATA|AN[0-9A-F])"
+                    aria-invalid={!patternValid}
+                  />
+                  {!patternValid && (
+                    <p className="text-xs text-destructive mt-1">
+                      Invalid regular expression.
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button size="sm" disabled={!canSave} onClick={handleSave}>
+                    {editingId ? "Save Changes" : "Add Rule"}
+                  </Button>
+                  {editingId && (
+                    <Button variant="outline" size="sm" onClick={cancelEdit}>
+                      Cancel
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {loading ? (
+                <p className="text-sm text-muted-foreground">
+                  Loading rules…
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {rules.map((rule) => (
+                    <div
+                      key={rule.id}
+                      className="flex items-center justify-between rounded-lg border border-border p-3"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <Switch
+                          checked={rule.enabled}
+                          onCheckedChange={() =>
+                            toggle(rule.id).catch((err) =>
+                              setImportError(
+                                err instanceof Error
+                                  ? err.message
+                                  : "Update failed.",
+                              ),
+                            )
+                          }
+                        />
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded-full border ${BADGE_PALETTE[rule.color]}`}
+                        >
+                          {rule.label}
+                        </span>
+                        <span className="text-xs text-muted-foreground truncate">
+                          {rule.fields.join(", ")} ·{" "}
+                          <code>{rule.pattern}</code>
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => startEdit(rule)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            remove(rule.id)
+                              .then(() => {
+                                if (editingId === rule.id) cancelEdit();
+                              })
+                              .catch((err) =>
+                                setImportError(
+                                  err instanceof Error
+                                    ? err.message
+                                    : "Delete failed.",
+                                ),
+                              );
+                          }}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  {rules.length === 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      No label rules yet. Add one above — for example, an
+                      "Internal" rule matching your own trunk or gateway
+                      device-name convention.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
-          ))}
-          {rules.length === 0 && (
-            <p className="text-sm text-muted-foreground">
-              No label rules yet. Add one above — for example, an "Internal"
-              rule matching your own trunk or gateway device-name convention.
-            </p>
-          )}
-        </div>
-      )}
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </div>
   );
 }
