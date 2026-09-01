@@ -15,17 +15,20 @@ export function SearchBar({
 }: SearchBarProps) {
   const [value, setValue] = useState(initialValue);
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  // Skip firing a search on mount when the box starts empty — the page's
-  // own default (unfiltered) load already covers that case. Any later
-  // change, including clearing a previously-typed value back to empty,
-  // should fire — that's the "clear search" case.
+  // SearchBar remounts (via a `key` prop) whenever the page navigates —
+  // including the replace-navigation SearchPage itself does after every
+  // search. The mount effect below must never fire a search on its own:
+  // SearchPage already searches independently whenever it (re)mounts this
+  // component, so firing here too — even conditionally on the value being
+  // non-empty — re-triggers that same replace-navigation and loops forever.
+  // Only genuine subsequent edits (typing, clearing) should debounce-fire.
   const isFirstRun = useRef(true);
 
   useEffect(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     if (isFirstRun.current) {
       isFirstRun.current = false;
-      if (!value.trim()) return;
+      return;
     }
     timerRef.current = setTimeout(() => onSearch(value.trim()), 300);
     return () => clearTimeout(timerRef.current);
