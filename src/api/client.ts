@@ -357,14 +357,14 @@ export function getNumplanDevices(number: string) {
 }
 
 // Spam check
+// Nomorobo is just { isSpam }. Scout returns its full raw result (carrier,
+// line type, porting, geo/LATA/OCN data, etc.) — the index signature lets
+// the UI render whatever fields are present without the client needing to
+// enumerate every one of Scout's fields.
 export interface SpamProviderResult {
   isSpam: boolean;
-  riskLevel?: number;
-  riskRating?: string;
-  carrier?: string | null;
-  lineType?: string | null;
-  ported?: boolean | null;
   error?: string;
+  [key: string]: unknown;
 }
 
 export interface SpamCheckResult {

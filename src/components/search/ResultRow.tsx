@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { ShieldQuestion, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   formatDurationFromInterval,
@@ -158,10 +159,9 @@ export function ResultRow({
           (spamChecked ? (
             !spamChecked.isSpam && (
               <span
-                className="text-green-500 text-sm"
                 title={`Verified not spam (checked ${new Date(spamChecked.checkedAt).toLocaleString()})`}
               >
-                ✓
+                <ShieldCheck className="size-4 text-green-500" />
               </span>
             )
           ) : (
@@ -170,10 +170,10 @@ export function ResultRow({
                 e.stopPropagation();
                 onCheckSpam(result.callingpartynumber || "");
               }}
-              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+              className="text-muted-foreground hover:text-foreground"
               title="Check calling number for spam"
             >
-              Check Spam
+              <ShieldQuestion className="size-4" />
             </button>
           ))}
         {onToggleStar && (

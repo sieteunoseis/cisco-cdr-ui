@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { ShieldQuestion, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatDurationFromInterval, formatTimestamp } from "@/lib/format";
@@ -13,6 +14,7 @@ import {
   type SpamProviderResult,
 } from "@/api/client";
 import { isCheckableNumber } from "@/lib/spam";
+import { ScoutDataCard } from "./ScoutDataCard";
 
 interface CallHeaderProps {
   cdr: any;
@@ -127,33 +129,24 @@ export function CallHeader({ cdr }: CallHeaderProps) {
           {isCheckableNumber(callingNumber) && spamStatus === "unknown" && (
             <button
               onClick={runSpamCheck}
-              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 mt-1"
+              className="text-muted-foreground hover:text-foreground mt-1"
+              title="Check calling number for spam"
             >
-              Check calling number for spam
+              <ShieldQuestion className="size-4" />
             </button>
           )}
           {spamStatus === "checking" && (
             <p className="text-xs text-muted-foreground mt-1">Checking…</p>
           )}
           {spamStatus === "not_spam" && (
-            <p className="text-xs text-muted-foreground mt-1">
-              <span className="text-green-500">✓</span> Verified not spam
+            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+              <ShieldCheck className="size-4 text-green-500" />
+              Verified not spam
             </p>
           )}
           {spamStatus === "error" && (
             <p className="text-xs text-destructive mt-1">
               Spam check failed.
-            </p>
-          )}
-          {scoutResult && !scoutResult.error && (
-            <p className="text-xs text-muted-foreground mt-1">
-              {scoutResult.carrier && <>Carrier: {scoutResult.carrier} </>}
-              {scoutResult.lineType && <>· {scoutResult.lineType} </>}
-              {scoutResult.riskRating && (
-                <>
-                  · Risk: {scoutResult.riskRating} ({scoutResult.riskLevel})
-                </>
-              )}
             </p>
           )}
           {cdr.originalcalledpartynumber &&
@@ -175,6 +168,7 @@ export function CallHeader({ cdr }: CallHeaderProps) {
           {isConnected ? "Connected" : `Cause ${cdr.destcause_value}`}
         </Badge>
       </div>
+      {scoutResult && !scoutResult.error && <ScoutDataCard data={scoutResult} />}
     </div>
   );
 }
