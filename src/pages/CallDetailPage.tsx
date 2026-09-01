@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useCallDetail } from "@/hooks/useCallDetail";
 import { CallHeader } from "@/components/detail/CallHeader";
@@ -9,6 +10,8 @@ import { SipLadder } from "@/components/detail/SipLadder";
 import { RelatedCalls } from "@/components/detail/RelatedCalls";
 import { RawCdr } from "@/components/detail/RawCdr";
 import { DeviceCard } from "@/components/detail/DeviceCard";
+import { ScoutDataCard } from "@/components/detail/ScoutDataCard";
+import type { SpamProviderResult } from "@/api/client";
 
 export function CallDetailPage() {
   const { callId } = useParams();
@@ -18,6 +21,11 @@ export function CallDetailPage() {
     callId!,
     callManagerId,
   );
+  const [spamProviders, setSpamProviders] = useState<Record<
+    string,
+    SpamProviderResult
+  > | null>(null);
+  const scoutResult = spamProviders?.icehook_scout;
 
   if (loading) {
     return (
@@ -47,10 +55,13 @@ export function CallDetailPage() {
 
   return (
     <div className="space-y-6">
-      <CallHeader cdr={primary} />
+      <CallHeader cdr={primary} onSpamProviders={setSpamProviders} />
       <EnrichmentCard cdr={primary} />
       <CallPath legs={cdr} />
       <QualityCard cmr={cmr} codec={primary.orig_codec_description} />
+      {scoutResult && !scoutResult.error && (
+        <ScoutDataCard data={scoutResult} />
+      )}
       <RelatedCalls
         callId={callId!}
         callManagerId={callManagerId}

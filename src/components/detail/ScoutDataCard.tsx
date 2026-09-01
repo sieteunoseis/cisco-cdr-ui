@@ -22,6 +22,7 @@ const FIELD_LABELS: Record<string, string> = {
   country: "Country",
   country_short: "Country Code",
   administrative_area_level_1: "State/Province",
+  administrative_area_level_1_short: "State/Province Code",
   administrative_area_level_2: "County",
   administrative_area_level_3: "Administrative Area 3",
   locality: "City",
@@ -61,30 +62,47 @@ function formatLabel(key: string): string {
   );
 }
 
+// Long free-text fields don't fit a label/value grid cell — rendered as
+// their own full-width line below the grid instead.
+const FULL_WIDTH_FIELDS = new Set(["notes"]);
+
 export function ScoutDataCard({ data }: ScoutDataCardProps) {
-  const skip = new Set(["isSpam", "error"]);
+  const skip = new Set(["isSpam", "error", ...FULL_WIDTH_FIELDS]);
   const keys = Object.keys(data).filter((k) => !skip.has(k));
   const ordered = [
     ...FIELD_ORDER.filter((k) => keys.includes(k)),
     ...keys.filter((k) => !FIELD_ORDER.includes(k)),
   ];
+  const fullWidthKeys = Object.keys(data).filter((k) =>
+    FULL_WIDTH_FIELDS.has(k),
+  );
 
-  if (ordered.length === 0) return null;
+  if (ordered.length === 0 && fullWidthKeys.length === 0) return null;
 
   return (
-    <Card size="sm" className="max-w-xl">
+    <Card size="sm">
       <CardHeader>
         <CardTitle>Scout (IceHook) Data</CardTitle>
       </CardHeader>
-      <CardContent>
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+      <CardContent className="space-y-3">
+        <dl className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-x-4 gap-y-2 text-sm">
           {ordered.map((key) => (
             <div key={key} className="contents">
               <dt className="text-muted-foreground">{formatLabel(key)}</dt>
-              <dd className="font-mono">{formatValue(data[key])}</dd>
+              <dd className="font-mono truncate" title={formatValue(data[key])}>
+                {formatValue(data[key])}
+              </dd>
             </div>
           ))}
         </dl>
+        {fullWidthKeys.map((key) => (
+          <p key={key} className="text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">
+              {formatLabel(key)}:
+            </span>{" "}
+            {formatValue(data[key])}
+          </p>
+        ))}
       </CardContent>
     </Card>
   );

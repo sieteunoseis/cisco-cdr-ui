@@ -14,15 +14,17 @@ import {
   type SpamProviderResult,
 } from "@/api/client";
 import { isCheckableNumber } from "@/lib/spam";
-import { ScoutDataCard } from "./ScoutDataCard";
 
 interface CallHeaderProps {
   cdr: any;
+  onSpamProviders?: (
+    providers: Record<string, SpamProviderResult> | null,
+  ) => void;
 }
 
 type SpamStatus = "unknown" | "checking" | "not_spam" | "spam" | "error";
 
-export function CallHeader({ cdr }: CallHeaderProps) {
+export function CallHeader({ cdr, onSpamProviders }: CallHeaderProps) {
   const navigate = useNavigate();
   const isConnected = cdr.datetimeconnect != null;
   const [starred, setStarred] = useState(false);
@@ -55,6 +57,10 @@ export function CallHeader({ cdr }: CallHeaderProps) {
       })
       .catch(() => {});
   }, [callingNumber]);
+
+  useEffect(() => {
+    onSpamProviders?.(spamProviders);
+  }, [spamProviders, onSpamProviders]);
 
   const toggleStar = async () => {
     setToggling(true);
@@ -93,11 +99,6 @@ export function CallHeader({ cdr }: CallHeaderProps) {
       setSpamStatus("error");
     }
   };
-
-  // Scout is the only provider that returns carrier/risk detail worth
-  // showing; Nomorobo is just the binary score already reflected in
-  // spamStatus.
-  const scoutResult = spamProviders?.icehook_scout;
 
   return (
     <div className="space-y-4">
@@ -168,7 +169,6 @@ export function CallHeader({ cdr }: CallHeaderProps) {
           {isConnected ? "Connected" : `Cause ${cdr.destcause_value}`}
         </Badge>
       </div>
-      {scoutResult && !scoutResult.error && <ScoutDataCard data={scoutResult} />}
     </div>
   );
 }
