@@ -42,8 +42,8 @@
 
 - [x] Variables with :var=default syntax
 - [x] Autocomplete for tables and columns
-- [x] Saved query reset button
-- [ ] Shared saved SQL queries (backend-stored, team-visible)
+- [x] Saved query reset button — removed when queries became shared (see below); resetting a team-visible resource with one click was a different risk than the old per-browser localStorage reset.
+- [x] Shared saved SQL queries (backend-stored, team-visible)
 - [ ] Translation Pattern matches?
 
 ## Device Diagnostics
@@ -65,7 +65,6 @@
 - [ ] Legacy DB support — query netdb02-1.ohsu.edu:19491/netinfo for historical CDR (2025-03-29 to 2026-03-25, 70M rows, timestamp format vs our epoch bigint)
 - [ ] Drag-and-drop SIP ladder column reordering
 
-
 # DN Map
 - [ ] Map DN to user (CUCM LDAP, AD, HR DB)? DeviceNumPlanMapEndUserMap? EndUserDeviceMap?
 - [x] Device name to CUCM admin?
@@ -84,3 +83,7 @@
 # Documentation Updates
 - [x] Update README with new features (MCP, Twilio etc)
 - [x] Link frontend to backend in readme to easily find and vice versa. Optional frontend for cisco-cucm-cdr (v1.3.0+).....this has been renamed
+
+
+# Grafana Support
+- [ ] Grafana dashboard for call volume, failure rate, top destinations (last 24h). Could we do a prometheus page?
