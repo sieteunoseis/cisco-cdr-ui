@@ -11,7 +11,8 @@ export function SqlPage() {
   const resolvedRef = useRef(query);
   const { columns, rows, count, durationMs, loading, error, execute } =
     useSqlQuery();
-  const { queries, save, remove, reset } = useSavedQueries();
+  const { queries, error: savedQueriesError, save, remove } =
+    useSavedQueries();
 
   const handleResolvedQuery = useCallback((resolved: string) => {
     resolvedRef.current = resolved;
@@ -30,12 +31,12 @@ export function SqlPage() {
   return (
     <div className="flex gap-6">
       <div className="w-56 shrink-0">
-        <SavedQueries
-          queries={queries}
-          onSelect={setQuery}
-          onDelete={remove}
-          onReset={reset}
-        />
+        {savedQueriesError && (
+          <p className="text-xs text-destructive mb-2">
+            {savedQueriesError}
+          </p>
+        )}
+        <SavedQueries queries={queries} onSelect={setQuery} onDelete={remove} />
       </div>
       <div className="flex-1 min-w-0 space-y-4">
         <SqlEditor

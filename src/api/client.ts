@@ -517,3 +517,38 @@ export function getSpamChecked(numbers: string[]) {
     `/api/v1/spam/checked?numbers=${q}`,
   );
 }
+
+// Saved SQL queries — shared/team-visible (backend-stored), not per-browser.
+export interface SavedQueryRecord {
+  id: string;
+  name: string;
+  query: string;
+  createdAt: string;
+}
+
+export function getSavedQueries() {
+  return apiFetch<{ queries: SavedQueryRecord[] }>("/api/v1/saved-queries");
+}
+
+export function createSavedQuery(name: string, query: string) {
+  return apiFetch<{ query: SavedQueryRecord }>("/api/v1/saved-queries", {
+    method: "POST",
+    body: JSON.stringify({ name, query }),
+  });
+}
+
+export function updateSavedQuery(
+  id: string,
+  patch: Partial<{ name: string; query: string }>,
+) {
+  return apiFetch<{ query: SavedQueryRecord }>(
+    `/api/v1/saved-queries/${id}`,
+    { method: "PUT", body: JSON.stringify(patch) },
+  );
+}
+
+export function deleteSavedQuery(id: string) {
+  return apiFetch<{ deleted: boolean }>(`/api/v1/saved-queries/${id}`, {
+    method: "DELETE",
+  });
+}
