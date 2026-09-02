@@ -194,44 +194,34 @@ function BreakdownList({
 interface LongCallListProps {
   calls: LongCallEntry[];
   metric?: AlertQualityMetric | null;
-  onNumberClick: (number: string) => void;
+  onCallClick: (callId: string, callManagerId: string) => void;
 }
 
-function LongCallList({ calls, metric, onNumberClick }: LongCallListProps) {
+function LongCallList({ calls, metric, onCallClick }: LongCallListProps) {
   if (calls.length === 0) {
     return <p className="text-xs text-muted-foreground">No data.</p>;
   }
   return (
     <ul className="space-y-1 sm:col-span-2">
       {calls.map((c) => (
-        <li
-          key={c.callId}
-          className="flex items-center justify-between text-xs"
-        >
-          <span className="font-mono">
-            <button
-              type="button"
-              onClick={() => c.callingNumber && onNumberClick(c.callingNumber)}
-              className="text-primary hover:underline"
-              title="View calls for this number"
-            >
+        <li key={c.callId}>
+          <button
+            type="button"
+            onClick={() => onCallClick(c.callId, c.callManagerId)}
+            className="w-full flex items-center justify-between text-xs rounded px-1 py-0.5 hover:bg-accent text-left"
+            title="View this call"
+          >
+            <span className="font-mono text-primary">
               {c.callingNumber ?? "—"}
-            </button>
-            <span className="text-muted-foreground mx-1">→</span>
-            <button
-              type="button"
-              onClick={() => c.calledNumber && onNumberClick(c.calledNumber)}
-              className="text-primary hover:underline"
-              title="View calls for this number"
-            >
+              <span className="text-muted-foreground mx-1">→</span>
               {c.calledNumber ?? "—"}
-            </button>
-          </span>
-          <span className="text-muted-foreground shrink-0 ml-2">
-            {metric
-              ? formatMetricValue(metric, c.metricValue ?? 0)
-              : formatDuration(c.durationSeconds ?? 0)}
-          </span>
+            </span>
+            <span className="text-muted-foreground shrink-0 ml-2">
+              {metric
+                ? formatMetricValue(metric, c.metricValue ?? 0)
+                : formatDuration(c.durationSeconds ?? 0)}
+            </span>
+          </button>
         </li>
       ))}
     </ul>
@@ -502,8 +492,8 @@ export function AlertsPage() {
                         metric={
                           r.type === "quality_degradation" ? r.metric : null
                         }
-                        onNumberClick={(n) =>
-                          navigate(`/?q=${encodeURIComponent(n)}`)
+                        onCallClick={(callId, cm) =>
+                          navigate(`/call/${callId}?cm=${cm}`)
                         }
                       />
                     )}
