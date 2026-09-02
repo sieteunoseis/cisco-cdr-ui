@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Phone, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -216,6 +216,22 @@ export function SeatMapPage() {
     };
   }, [state.data]);
 
+  // Normalize bar heights against the busiest number/window on the current
+  // page, so a glance across the grid shows relative call volume — a quiet
+  // or unused DN reads as flat/short bars next to a busy one's tall bars.
+  const maxCallCount = useMemo(() => {
+    let max = 0;
+    for (const c of Object.values(callCounts)) {
+      max = Math.max(max, c.last24h, c.last7d, c.last30d);
+    }
+    return max;
+  }, [callCounts]);
+
+  const barHeightPct = (value: number | undefined) => {
+    if (!value || maxCallCount === 0) return 0;
+    return Math.max(10, Math.round((value / maxCallCount) * 100));
+  };
+
   const allSeats =
     state.data && state.data.eligible ? state.data.seats : [];
   const visibleSeats = allSeats.filter((seat) => {
@@ -314,6 +330,10 @@ export function SeatMapPage() {
             <span className="text-xs text-muted-foreground ml-1">
               {visibleSeats.length} shown
             </span>
+            <span className="text-xs text-muted-foreground ml-3">
+              Bars: 24h / 7d / 30d call volume, relative to the busiest
+              number on this page
+            </span>
           </div>
 
           <div className="grid grid-cols-10 gap-1 [perspective:600px]">
@@ -338,13 +358,29 @@ export function SeatMapPage() {
                   }
                 >
                   <div
-                    className={`absolute inset-0 rounded flex items-center justify-center text-[10px] [backface-visibility:hidden] ${
+                    className={`absolute inset-0 rounded flex flex-col items-center justify-center gap-0.5 [backface-visibility:hidden] ${
                       seat.configured
                         ? "bg-primary/80 text-primary-foreground"
                         : "border border-border text-muted-foreground"
                     }`}
                   >
-                    {seat.number.slice(-4)}
+                    <span className="text-[10px] leading-none">
+                      {seat.number.slice(-4)}
+                    </span>
+                    <div className="flex items-end gap-[1.5px] h-3">
+                      <div
+                        className="w-1 rounded-sm bg-current opacity-90"
+                        style={{ height: `${barHeightPct(counts?.last24h)}%` }}
+                      />
+                      <div
+                        className="w-1 rounded-sm bg-current opacity-60"
+                        style={{ height: `${barHeightPct(counts?.last7d)}%` }}
+                      />
+                      <div
+                        className="w-1 rounded-sm bg-current opacity-35"
+                        style={{ height: `${barHeightPct(counts?.last30d)}%` }}
+                      />
+                    </div>
                   </div>
                   <div
                     className="absolute inset-0 rounded border border-border bg-card flex items-center justify-center gap-1 [backface-visibility:hidden]"
