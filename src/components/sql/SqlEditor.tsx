@@ -9,7 +9,11 @@ interface SqlEditorProps {
   value: string;
   onChange: (value: string) => void;
   onRun: () => void;
+  onCancel?: () => void;
   onSave: () => void;
+  onUpdate?: () => void;
+  onClear?: () => void;
+  loadedQueryName?: string | null;
   loading?: boolean;
 }
 
@@ -19,7 +23,11 @@ export function SqlEditor({
   value,
   onChange,
   onRun,
+  onCancel,
   onSave,
+  onUpdate,
+  onClear,
+  loadedQueryName,
   loading,
 }: SqlEditorProps) {
   const editorRef = useRef<any>(null);
@@ -80,28 +88,55 @@ export function SqlEditor({
             renderLineHighlight: "none",
             quickSuggestions: true,
             suggestOnTriggerCharacters: true,
+            readOnly: loading,
           }}
         />
       </div>
       <div className="flex items-center gap-2">
-        <Button onClick={onRun} disabled={loading || !value.trim()}>
-          {loading ? "Running..." : "Run"}
-        </Button>
+        {loading ? (
+          <Button variant="destructive" onClick={onCancel} disabled={!onCancel}>
+            Cancel
+          </Button>
+        ) : (
+          <Button onClick={onRun} disabled={!value.trim()}>
+            Run
+          </Button>
+        )}
         <Button
           variant="outline"
           onClick={handleFormat}
-          disabled={!value.trim()}
+          disabled={!value.trim() || loading}
         >
           Format
         </Button>
-        <Button variant="outline" onClick={onSave} disabled={!value.trim()}>
-          Save
+        {onUpdate && (
+          <Button
+            variant="outline"
+            onClick={onUpdate}
+            disabled={!value.trim() || loading}
+            title={`Overwrite "${loadedQueryName}" with the current text`}
+          >
+            Update
+          </Button>
+        )}
+        <Button
+          variant="outline"
+          onClick={onSave}
+          disabled={!value.trim() || loading}
+        >
+          {onUpdate ? "Save As New" : "Save"}
         </Button>
-        <Button variant="ghost" onClick={() => onChange("")}>
+        <Button
+          variant="ghost"
+          onClick={onClear ?? (() => onChange(""))}
+          disabled={loading}
+        >
           Clear
         </Button>
         <span className="text-xs text-muted-foreground ml-auto">
-          Ctrl+Enter to run
+          {loading
+            ? "Running — editor locked until this finishes or is cancelled"
+            : "Ctrl+Enter to run"}
         </span>
       </div>
     </div>

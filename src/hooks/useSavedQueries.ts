@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import {
   getSavedQueries,
   createSavedQuery,
+  updateSavedQuery,
   deleteSavedQuery,
   type SavedQueryRecord,
 } from "@/api/client";
@@ -32,26 +33,29 @@ export function useSavedQueries() {
   }, []);
 
   const save = useCallback((name: string, query: string) => {
-    createSavedQuery(name, query)
-      .then((res) => {
-        setQueries((prev) => [...prev, res.query]);
-        setError(null);
-      })
-      .catch((err) =>
-        setError(err instanceof Error ? err.message : String(err)),
+    return createSavedQuery(name, query).then((res) => {
+      setQueries((prev) => [...prev, res.query]);
+      setError(null);
+      return res.query;
+    });
+  }, []);
+
+  const update = useCallback((id: string, query: string) => {
+    return updateSavedQuery(id, { query }).then((res) => {
+      setQueries((prev) =>
+        prev.map((q) => (q.id === id ? res.query : q)),
       );
+      setError(null);
+      return res.query;
+    });
   }, []);
 
   const remove = useCallback((id: string) => {
-    deleteSavedQuery(id)
-      .then(() => {
-        setQueries((prev) => prev.filter((q) => q.id !== id));
-        setError(null);
-      })
-      .catch((err) =>
-        setError(err instanceof Error ? err.message : String(err)),
-      );
+    return deleteSavedQuery(id).then(() => {
+      setQueries((prev) => prev.filter((q) => q.id !== id));
+      setError(null);
+    });
   }, []);
 
-  return { queries, loading, error, save, remove };
+  return { queries, loading, error, save, update, remove, setError };
 }

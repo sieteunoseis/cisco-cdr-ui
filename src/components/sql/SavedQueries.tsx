@@ -3,12 +3,14 @@ import type { SavedQuery } from "@/hooks/useSavedQueries";
 
 interface SavedQueriesProps {
   queries: SavedQuery[];
-  onSelect: (query: string) => void;
+  selectedId?: string | null;
+  onSelect: (q: SavedQuery) => void;
   onDelete: (id: string) => void;
 }
 
 export function SavedQueries({
   queries,
+  selectedId,
   onSelect,
   onDelete,
 }: SavedQueriesProps) {
@@ -24,8 +26,10 @@ export function SavedQueries({
           {queries.map((q) => (
             <div
               key={q.id}
-              className="group flex items-center justify-between rounded-md px-3 py-2 hover:bg-accent cursor-pointer"
-              onClick={() => onSelect(q.query)}
+              className={`group flex items-center justify-between rounded-md px-3 py-2 cursor-pointer ${
+                q.id === selectedId ? "bg-accent" : "hover:bg-accent"
+              }`}
+              onClick={() => onSelect(q)}
             >
               <span className="text-sm truncate">{q.name}</span>
               <Button

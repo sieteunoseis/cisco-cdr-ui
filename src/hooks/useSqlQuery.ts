@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { executeSql } from "@/api/client";
 
 interface SqlQueryState {
@@ -19,11 +19,15 @@ export function useSqlQuery() {
     loading: false,
     error: null,
   });
+  const controllerRef = useRef<AbortController | null>(null);
 
   const execute = useCallback(async (query: string) => {
+    controllerRef.current?.abort();
+    const controller = new AbortController();
+    controllerRef.current = controller;
     setState((s) => ({ ...s, loading: true, error: null }));
     try {
-      const data = await executeSql(query);
+      const data = await executeSql(query, controller.signal);
       setState({
         columns: data.columns,
         rows: data.rows,
@@ -33,6 +37,16 @@ export function useSqlQuery() {
         error: null,
       });
     } catch (err: any) {
+      // A user-initiated cancel rejects with AbortError — leave whatever
+      // results were already showing in place rather than surfacing it as
+      // a failure, and don't stomp on a newer run's loading state if one
+      // was already kicked off before this rejection settled.
+      if (err?.name === "AbortError") {
+        setState((s) =>
+          controllerRef.current === controller ? { ...s, loading: false } : s,
+        );
+        return;
+      }
       setState((s) => ({
         ...s,
         loading: false,
@@ -41,7 +55,12 @@ export function useSqlQuery() {
     }
   }, []);
 
+  const cancel = useCallback(() => {
+    controllerRef.current?.abort();
+  }, []);
+
   const clear = useCallback(() => {
+    controllerRef.current?.abort();
     setState({
       columns: [],
       rows: [],
@@ -52,5 +71,5 @@ export function useSqlQuery() {
     });
   }, []);
 
-  return { ...state, execute, clear };
+  return { ...state, execute, cancel, clear };
 }

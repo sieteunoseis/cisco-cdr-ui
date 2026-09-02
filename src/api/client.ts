@@ -38,13 +38,17 @@ export function qualityCdr(params: Record<string, string>) {
   );
 }
 
-export function executeSql(query: string) {
+export function executeSql(query: string, signal?: AbortSignal) {
   return apiFetch<{
     columns: string[];
     rows: any[];
     count: number;
     duration_ms: number;
-  }>("/api/v1/cdr/sql", { method: "POST", body: JSON.stringify({ query }) });
+  }>("/api/v1/cdr/sql", {
+    method: "POST",
+    body: JSON.stringify({ query }),
+    signal,
+  });
 }
 
 interface SipLadderResult {
