@@ -47,18 +47,16 @@ export function ResultRow({
   const matchedRules = matchLabelRules(result, rules);
   // "Recording" is an ordinary label now (portable across deployments,
   // not a hardcoded OHSU device-naming assumption) — its badge renders
-  // via matchedRules below like any other label. Dimming/transfer/
-  // conference suppression still depend on it being present by that
-  // name, so those fall away silently if the label is renamed or
-  // disabled rather than erroring.
+  // via matchedRules below like any other label. Transfer/conference
+  // suppression still depends on it being present by that name, so it
+  // falls away silently if the label is renamed or disabled rather than
+  // erroring.
   const isRecording = matchedRules.some((r) => r.label === "Recording");
   const transfer = !isRecording && isTransfer(result);
   const conference = !isRecording && isConference(result);
 
   return (
-    <div
-      className={`flex items-center justify-between rounded-lg border border-border p-4 hover:bg-accent cursor-pointer transition-colors ${isRecording ? "opacity-60" : ""}`}
-    >
+    <div className="flex items-center justify-between rounded-lg border border-border p-4 hover:bg-accent cursor-pointer transition-colors">
       <div
         className="flex-1 min-w-0"
         onClick={() =>
