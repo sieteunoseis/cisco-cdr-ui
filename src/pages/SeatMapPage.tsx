@@ -229,7 +229,7 @@ export function SeatMapPage() {
 
   const barHeightPct = (value: number | undefined) => {
     if (!value || maxCallCount === 0) return 0;
-    return Math.max(10, Math.round((value / maxCallCount) * 100));
+    return Math.max(20, Math.round((value / maxCallCount) * 100));
   };
 
   const allSeats =
@@ -358,26 +358,26 @@ export function SeatMapPage() {
                   }
                 >
                   <div
-                    className={`absolute inset-0 rounded flex flex-col items-center justify-center gap-0.5 [backface-visibility:hidden] ${
+                    className={`absolute inset-0 rounded flex flex-col items-center p-1.5 [backface-visibility:hidden] ${
                       seat.configured
                         ? "bg-primary/80 text-primary-foreground"
                         : "border border-border text-muted-foreground"
                     }`}
                   >
-                    <span className="text-[10px] leading-none">
+                    <span className="text-sm font-medium leading-none shrink-0">
                       {seat.number.slice(-4)}
                     </span>
-                    <div className="flex items-end gap-[1.5px] h-3">
+                    <div className="flex items-end justify-center gap-1 w-full flex-1 mt-1">
                       <div
-                        className="w-1 rounded-sm bg-current opacity-90"
+                        className="flex-1 max-w-2 rounded-sm bg-current opacity-100"
                         style={{ height: `${barHeightPct(counts?.last24h)}%` }}
                       />
                       <div
-                        className="w-1 rounded-sm bg-current opacity-60"
+                        className="flex-1 max-w-2 rounded-sm bg-current opacity-70"
                         style={{ height: `${barHeightPct(counts?.last7d)}%` }}
                       />
                       <div
-                        className="w-1 rounded-sm bg-current opacity-35"
+                        className="flex-1 max-w-2 rounded-sm bg-current opacity-45"
                         style={{ height: `${barHeightPct(counts?.last30d)}%` }}
                       />
                     </div>
