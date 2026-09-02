@@ -122,35 +122,36 @@ export function CallHeader({ cdr, onSpamProviders }: CallHeaderProps) {
             >
               {starred ? "★" : "☆"}
             </button>
+            {isCheckableNumber(callingNumber) && spamStatus === "unknown" && (
+              <button
+                onClick={runSpamCheck}
+                className="text-muted-foreground hover:text-foreground"
+                title="Check calling number for spam"
+              >
+                <ShieldQuestion className="size-5" />
+              </button>
+            )}
+            {spamStatus === "checking" && (
+              <span className="text-xs text-muted-foreground">
+                Checking…
+              </span>
+            )}
+            {spamStatus === "not_spam" && (
+              <span title="Verified not spam">
+                <ShieldCheck className="size-5 text-green-500" />
+              </span>
+            )}
             {spamStatus === "spam" && (
               <Badge className="bg-red-500/15 text-red-400 border-red-500/25">
                 Spam
               </Badge>
             )}
+            {spamStatus === "error" && (
+              <span className="text-xs text-destructive" title="Spam check failed">
+                Spam check failed
+              </span>
+            )}
           </div>
-          {isCheckableNumber(callingNumber) && spamStatus === "unknown" && (
-            <button
-              onClick={runSpamCheck}
-              className="text-muted-foreground hover:text-foreground mt-1"
-              title="Check calling number for spam"
-            >
-              <ShieldQuestion className="size-4" />
-            </button>
-          )}
-          {spamStatus === "checking" && (
-            <p className="text-xs text-muted-foreground mt-1">Checking…</p>
-          )}
-          {spamStatus === "not_spam" && (
-            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-              <ShieldCheck className="size-4 text-green-500" />
-              Verified not spam
-            </p>
-          )}
-          {spamStatus === "error" && (
-            <p className="text-xs text-destructive mt-1">
-              Spam check failed.
-            </p>
-          )}
           {cdr.originalcalledpartynumber &&
             cdr.originalcalledpartynumber !== cdr.finalcalledpartynumber && (
               <p className="text-lg font-mono text-muted-foreground mt-1">
