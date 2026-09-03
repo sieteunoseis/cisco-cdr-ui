@@ -78,6 +78,12 @@ This dashboard requires [cisco-cdr-processor](https://github.com/sieteunoseis/ci
 
 See that repo's README for the full API reference. CORS must be enabled on the backend (`CORS_ORIGIN` env var, set to this dashboard's URL).
 
+## Grafana Dashboard
+
+Labels — the regex-based tags you create on the **Settings** page (e.g. "Analog", "UCCE", a device-based label matching a SIP trunk) — aren't just a Search/Alerts feature. A sample Grafana dashboard, included in the backend repo at [`cisco-cdr-processor/docs/grafana-dashboard.json`](https://github.com/sieteunoseis/cisco-cdr-processor/blob/main/docs/grafana-dashboard.json), reads `label_rules` live and turns every label you define here into a selectable filter across 16 panels (call volume, failure rate, top numbers, quality trends, and more) — no export or sync step. Create a label here, and it's immediately in that dashboard's **Label** dropdown.
+
+See [cisco-cdr-processor's README](https://github.com/sieteunoseis/cisco-cdr-processor#grafana-dashboard) for the full setup: creating a read-only Postgres role, adding the datasource in Grafana, and importing the dashboard. One setting is specific to this app: when importing, the dashboard prompts for a **CDR UI base URL** (`cdr_ui_url`) variable — set that to wherever this app is deployed, since the dashboard's "Search this number in CDR" links (on the Top Calling/Top Called panels) navigate straight to this app's Search page (`/?q=<number>`).
+
 ## Tech Stack
 
 Vite, React 19, TypeScript, Tailwind CSS 4, shadcn/ui, Monaco Editor, sql-formatter, React Router
