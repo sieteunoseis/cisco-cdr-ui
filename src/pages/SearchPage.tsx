@@ -25,6 +25,7 @@ import { isCheckableNumber } from "@/lib/spam";
 import type { CdrResult } from "@/hooks/useSearch";
 
 const REFRESH_INTERVAL = 30000;
+const QUICK_FILTER_IDS = new Set(["zero", "transfer", "conference"]);
 
 export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -100,11 +101,28 @@ export function SearchPage() {
   // (deleted, not just disabled) — leaves the fixed quick-filter ids alone.
   useEffect(() => {
     const validIds = new Set(rules.map((r) => r.id));
-    const quickFilterIds = new Set(["zero", "transfer", "conference"]);
     setSelectedFilterIds((prev) =>
-      prev.filter((id) => quickFilterIds.has(id) || validIds.has(id)),
+      prev.filter((id) => QUICK_FILTER_IDS.has(id) || validIds.has(id)),
     );
   }, [rules]);
+
+  // Label chips are matched server-side (full time range, not just the
+  // currently-loaded page) whenever the selection is pure labels — a
+  // low-volume label like a device-based one can easily have zero matches
+  // in the most-recent 100 rows even though it matches plenty overall.
+  // Mixing in a quick filter (0s/transfer/conference — numeric CDR-field
+  // checks with no label_rules row) falls back to the old page-scoped
+  // client-side union instead, since pre-filtering server-side to only
+  // label matches would silently drop quick-filter-only matches from the
+  // fetched page.
+  const activeLabelIds = selectedFilterIds.filter(
+    (id) => !QUICK_FILTER_IDS.has(id),
+  );
+  const serverLabelIds =
+    activeLabelIds.length > 0 &&
+    activeLabelIds.length === selectedFilterIds.length
+      ? activeLabelIds.join(",")
+      : undefined;
 
   // Starred state
   const [starredMap, setStarredMap] = useState<Record<string, boolean>>({});
@@ -291,10 +309,11 @@ export function SearchPage() {
         limit: String(limit),
       };
       if (query) params.number = query;
+      if (serverLabelIds) params.labelIds = serverLabelIds;
       lastSearchRef.current = params;
       search(params);
     },
-    [search, timeRange, limit, setSearchParams],
+    [search, timeRange, limit, setSearchParams, serverLabelIds],
   );
 
   const handleAdvancedSearch = useCallback(
@@ -304,10 +323,11 @@ export function SearchPage() {
       for (const [k, v] of Object.entries(params)) {
         if (v) clean[k] = v;
       }
+      if (serverLabelIds) clean.labelIds = serverLabelIds;
       lastSearchRef.current = clean;
       search(clean);
     },
-    [search],
+    [search, serverLabelIds],
   );
 
   const handleLoadMore = useCallback(() => {
@@ -320,14 +340,16 @@ export function SearchPage() {
 
   // Reset paging back to the default whenever the nav bar's "Search" link
   // is clicked (a fresh navigation to this route, even without a path
-  // change, bumps location.key).
+  // change, bumps location.key) or the server-side label selection
+  // changes (a new filtered view starts back at page 1).
   useEffect(() => {
     setLimit(100);
-  }, [location.key]);
+  }, [location.key, serverLabelIds]);
 
-  // Load calls on mount, when time range changes, and on a fresh
-  // navigation back to this route (location.key) — covers the nav bar's
-  // "Search" link no longer being a no-op when a search is already active.
+  // Load calls on mount, when time range changes, on a fresh navigation
+  // back to this route (location.key), and when the server-side label
+  // selection changes — covers the nav bar's "Search" link no longer
+  // being a no-op when a search is already active.
   useEffect(() => {
     if (showStarredOnly) return;
     const params: Record<string, string> = {
@@ -335,10 +357,11 @@ export function SearchPage() {
       limit: String(limit),
     };
     if (initialQuery) params.number = initialQuery;
+    if (serverLabelIds) params.labelIds = serverLabelIds;
     lastSearchRef.current = params;
     search(params);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timeRange, location.key]);
+  }, [timeRange, location.key, serverLabelIds]);
 
   // Auto-refresh
   useEffect(() => {
