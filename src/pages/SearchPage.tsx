@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useSearchParams, useLocation } from "react-router-dom";
-import { X } from "lucide-react";
+import { X, EyeOff } from "lucide-react";
 import { SearchBar } from "@/components/search/SearchBar";
 import { TimeRange } from "@/components/search/TimeRange";
 import {
@@ -26,6 +26,14 @@ import type { CdrResult } from "@/hooks/useSearch";
 
 const REFRESH_INTERVAL = 30000;
 const QUICK_FILTER_IDS = new Set(["zero", "transfer", "conference"]);
+type FilterMode = "show" | "hide";
+
+function filterChipClassName(mode: FilterMode | undefined) {
+  if (mode === "show") return "bg-primary text-primary-foreground border-primary";
+  if (mode === "hide")
+    return "bg-destructive/10 text-destructive border-destructive";
+  return "text-muted-foreground border-border hover:border-foreground";
+}
 
 export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -46,38 +54,52 @@ export function SearchPage() {
       return {};
     }
   })();
-  // Nothing selected = show every call. Selecting a chip (quick filter or
-  // label) narrows to calls matching at least one selected chip — select
-  // more to broaden the set, not narrow it further. Quick filters use
-  // fixed synthetic ids ("zero", "transfer", "conference"); everything
-  // else is a real label id — Recording/Phone Device used to be quick
-  // filters too but are ordinary labels now. Old saved shape (separate
-  // hide/show-only booleans) isn't migrated — the semantics changed, so a
-  // stale "hide recording" flag would invert into "show only recording"
-  // if carried over.
-  const [selectedFilterIds, setSelectedFilterIds] = useState<string[]>(
-    Array.isArray(savedFilters.selectedFilterIds)
-      ? savedFilters.selectedFilterIds
-      : [],
+  // Nothing selected = show every call. Each chip (quick filter or label)
+  // cycles neutral -> show -> hide -> neutral on click. Any "show" chips
+  // narrow the set to calls matching at least one of them (select more
+  // show chips to broaden, not narrow further); "hide" chips then remove
+  // any call matching at least one of them, regardless of the show set.
+  // Quick filters use fixed synthetic ids ("zero", "transfer",
+  // "conference"); everything else is a real label id — Recording/Phone
+  // Device used to be quick filters too but are ordinary labels now.
+  const [filterModes, setFilterModes] = useState<Record<string, FilterMode>>(
+    () => {
+      if (
+        savedFilters.filterModes &&
+        typeof savedFilters.filterModes === "object"
+      ) {
+        return savedFilters.filterModes;
+      }
+      // Migrate the old pure-union shape: every previously-selected id was
+      // effectively a "show" chip, so this preserves existing behavior.
+      if (Array.isArray(savedFilters.selectedFilterIds)) {
+        return Object.fromEntries(
+          savedFilters.selectedFilterIds.map((id: string) => [id, "show"]),
+        );
+      }
+      return {};
+    },
   );
   const [tagsFilterOpen, setTagsFilterOpen] = useState(false);
   const [labelSearch, setLabelSearch] = useState("");
   const [showStarredOnly, setShowStarredOnly] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const toggleFilter = (id: string) => {
-    setSelectedFilterIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
+  const cycleFilter = (id: string) => {
+    setFilterModes((prev) => {
+      const current = prev[id];
+      if (!current) return { ...prev, [id]: "show" };
+      if (current === "show") return { ...prev, [id]: "hide" };
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
   };
 
   // Persist filter state to sessionStorage
   useEffect(() => {
-    sessionStorage.setItem(
-      "cdr-filters",
-      JSON.stringify({ selectedFilterIds }),
-    );
-  }, [selectedFilterIds]);
+    sessionStorage.setItem("cdr-filters", JSON.stringify({ filterModes }));
+  }, [filterModes]);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const lastSearchRef = useRef<Record<string, string> | null>(null);
   const { results, count, loading, error, search } = useSearch();
@@ -91,36 +113,45 @@ export function SearchPage() {
     // Selected labels first (stable within each group) so an active
     // filter never scrolls out of view among 100+ others.
     return [...matching].sort((a, b) => {
-      const aSelected = selectedFilterIds.includes(a.id) ? 0 : 1;
-      const bSelected = selectedFilterIds.includes(b.id) ? 0 : 1;
+      const aSelected = filterModes[a.id] ? 0 : 1;
+      const bSelected = filterModes[b.id] ? 0 : 1;
       return aSelected - bSelected;
     });
-  }, [enabledRules, labelSearch, selectedFilterIds]);
+  }, [enabledRules, labelSearch, filterModes]);
 
-  // Prune selectedFilterIds of label ids for rules that no longer exist
-  // (deleted, not just disabled) — leaves the fixed quick-filter ids alone.
+  // Prune filterModes of label ids for rules that no longer exist (deleted,
+  // not just disabled) — leaves the fixed quick-filter ids alone.
   useEffect(() => {
     const validIds = new Set(rules.map((r) => r.id));
-    setSelectedFilterIds((prev) =>
-      prev.filter((id) => QUICK_FILTER_IDS.has(id) || validIds.has(id)),
+    setFilterModes((prev) =>
+      Object.fromEntries(
+        Object.entries(prev).filter(
+          ([id]) => QUICK_FILTER_IDS.has(id) || validIds.has(id),
+        ),
+      ),
     );
   }, [rules]);
 
   // Label chips are matched server-side (full time range, not just the
-  // currently-loaded page) whenever the selection is pure labels — a
-  // low-volume label like a device-based one can easily have zero matches
-  // in the most-recent 100 rows even though it matches plenty overall.
-  // Mixing in a quick filter (0s/transfer/conference — numeric CDR-field
-  // checks with no label_rules row) falls back to the old page-scoped
-  // client-side union instead, since pre-filtering server-side to only
-  // label matches would silently drop quick-filter-only matches from the
-  // fetched page.
-  const activeLabelIds = selectedFilterIds.filter(
-    (id) => !QUICK_FILTER_IDS.has(id),
+  // currently-loaded page) whenever the selection is pure "show" labels —
+  // a low-volume label like a device-based one can easily have zero
+  // matches in the most-recent 100 rows even though it matches plenty
+  // overall. Mixing in a quick filter (0s/transfer/conference — numeric
+  // CDR-field checks with no label_rules row) or any "hide" chip falls
+  // back to the old page-scoped client-side filtering instead, since
+  // pre-filtering server-side to only label matches would silently drop
+  // quick-filter/hide-only effects from the fetched page.
+  const showIds = Object.keys(filterModes).filter(
+    (id) => filterModes[id] === "show",
   );
+  const hideIds = Object.keys(filterModes).filter(
+    (id) => filterModes[id] === "hide",
+  );
+  const activeLabelIds = showIds.filter((id) => !QUICK_FILTER_IDS.has(id));
   const serverLabelIds =
+    hideIds.length === 0 &&
     activeLabelIds.length > 0 &&
-    activeLabelIds.length === selectedFilterIds.length
+    activeLabelIds.length === showIds.length
       ? activeLabelIds.join(",")
       : undefined;
 
@@ -272,31 +303,41 @@ export function SearchPage() {
         tags[rule.id] = (tags[rule.id] ?? 0) + 1;
       }
     }
-    // Nothing selected = show everything. Any selection narrows to calls
-    // matching at least one selected chip (quick filter or label) — select
-    // more chips to broaden the set, not narrow it further. Recording and
-    // Phone Device used to be hardcoded checks here — they're ordinary
-    // labels now, so they're covered by the matchLabelRules check below.
-    if (selectedFilterIds.length > 0) {
-      filtered = filtered.filter((r) => {
-        if (
-          selectedFilterIds.includes("zero") &&
-          (r.duration === "00:00:00" ||
-            r.duration === "0" ||
-            Number(r.duration) === 0)
-        )
-          return true;
-        if (selectedFilterIds.includes("transfer") && isTransfer(r))
-          return true;
-        if (selectedFilterIds.includes("conference") && isConference(r))
-          return true;
-        return matchLabelRules(r, enabledRules).some((rule) =>
-          selectedFilterIds.includes(rule.id),
+    // Nothing in "show" = show everything; any "show" chips narrow to
+    // calls matching at least one of them (select more to broaden, not
+    // narrow further). "Hide" chips then remove any call matching at
+    // least one of them, on top of that. Recording and Phone Device used
+    // to be hardcoded checks here — they're ordinary labels now, so
+    // they're covered by the matchLabelRules check below.
+    const matchesFilterId = (id: string, r: CdrResult) => {
+      if (id === "zero")
+        return (
+          r.duration === "00:00:00" ||
+          r.duration === "0" ||
+          Number(r.duration) === 0
         );
-      });
+      if (id === "transfer") return isTransfer(r);
+      if (id === "conference") return isConference(r);
+      return matchLabelRules(r, enabledRules).some((rule) => rule.id === id);
+    };
+    const showFilterIds = Object.keys(filterModes).filter(
+      (id) => filterModes[id] === "show",
+    );
+    const hideFilterIds = Object.keys(filterModes).filter(
+      (id) => filterModes[id] === "hide",
+    );
+    if (showFilterIds.length > 0) {
+      filtered = filtered.filter((r) =>
+        showFilterIds.some((id) => matchesFilterId(id, r)),
+      );
+    }
+    if (hideFilterIds.length > 0) {
+      filtered = filtered.filter(
+        (r) => !hideFilterIds.some((id) => matchesFilterId(id, r)),
+      );
     }
     return { filteredResults: filtered, hiddenCounts: counts, tagCounts: tags };
-  }, [displayResults, selectedFilterIds, enabledRules]);
+  }, [displayResults, filterModes, enabledRules]);
 
   const handleSearch = useCallback(
     (query: string) => {
@@ -483,9 +524,9 @@ export function SearchPage() {
                 </Button>
               </div>
               <div className="relative flex items-center gap-1">
-                {selectedFilterIds.length > 0 && (
+                {Object.keys(filterModes).length > 0 && (
                   <button
-                    onClick={() => setSelectedFilterIds([])}
+                    onClick={() => setFilterModes({})}
                     className="text-muted-foreground hover:text-foreground text-xs"
                     title="Clear all filters"
                   >
@@ -499,17 +540,17 @@ export function SearchPage() {
                   onClick={() => setFiltersOpen(!filtersOpen)}
                 >
                   Filters
-                  {selectedFilterIds.length > 0 && (
+                  {Object.keys(filterModes).length > 0 && (
                     <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground text-[10px] w-4 h-4">
-                      {selectedFilterIds.length}
+                      {Object.keys(filterModes).length}
                     </span>
                   )}
                 </Button>
                 {filtersOpen && (
                   <div className="absolute right-0 top-8 z-50 rounded-lg border border-border bg-popover p-3 shadow-lg space-y-2.5 w-64">
                     <p className="text-xs text-muted-foreground">
-                      Showing all calls. Select chips below to narrow to
-                      calls matching any of them.
+                      Click a chip to show only matches, click again to hide
+                      them, click again to clear.
                     </p>
                     <div className="flex flex-wrap gap-1">
                       {(
@@ -519,20 +560,19 @@ export function SearchPage() {
                           { key: "conference", label: "Conferences", count: hiddenCounts.conference },
                         ] as const
                       ).map((f) => {
-                        const active = selectedFilterIds.includes(f.key);
+                        const mode = filterModes[f.key];
                         return (
                           <button
                             key={f.key}
                             type="button"
-                            onClick={() => toggleFilter(f.key)}
+                            onClick={() => cycleFilter(f.key)}
                             title={f.label}
-                            className={`inline-flex items-center gap-1 max-w-[9rem] px-1.5 py-0.5 rounded-full border text-xs ${
-                              active
-                                ? "bg-primary text-primary-foreground border-primary"
-                                : "text-muted-foreground border-border hover:border-foreground"
-                            }`}
+                            className={`inline-flex items-center gap-1 max-w-[9rem] px-1.5 py-0.5 rounded-full border text-xs ${filterChipClassName(mode)}`}
                           >
-                            {active && <X className="size-3 shrink-0" />}
+                            {mode === "show" && <X className="size-3 shrink-0" />}
+                            {mode === "hide" && (
+                              <EyeOff className="size-3 shrink-0" />
+                            )}
                             <span className="truncate">
                               {f.label}
                               {f.count !== null && ` (${f.count})`}
@@ -568,23 +608,20 @@ export function SearchPage() {
                           <div className="pl-2 max-h-40 overflow-y-auto">
                             <div className="flex flex-wrap gap-1">
                               {visibleLabelRules.map((rule) => {
-                                const active = selectedFilterIds.includes(
-                                  rule.id,
-                                );
+                                const mode = filterModes[rule.id];
                                 return (
                                   <button
                                     key={rule.id}
                                     type="button"
-                                    onClick={() => toggleFilter(rule.id)}
+                                    onClick={() => cycleFilter(rule.id)}
                                     title={rule.label}
-                                    className={`inline-flex items-center gap-1 max-w-[9rem] px-1.5 py-0.5 rounded-full border text-xs ${
-                                      active
-                                        ? "bg-primary text-primary-foreground border-primary"
-                                        : "text-muted-foreground border-border hover:border-foreground"
-                                    }`}
+                                    className={`inline-flex items-center gap-1 max-w-[9rem] px-1.5 py-0.5 rounded-full border text-xs ${filterChipClassName(mode)}`}
                                   >
-                                    {active && (
+                                    {mode === "show" && (
                                       <X className="size-3 shrink-0" />
+                                    )}
+                                    {mode === "hide" && (
+                                      <EyeOff className="size-3 shrink-0" />
                                     )}
                                     <span className="truncate">
                                       {rule.label} ({tagCounts[rule.id] ?? 0})
