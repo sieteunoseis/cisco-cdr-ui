@@ -25,6 +25,7 @@ import { isCheckableNumber } from "@/lib/spam";
 import type { CdrResult } from "@/hooks/useSearch";
 
 const REFRESH_INTERVAL = 30000;
+const PAGE_SIZE = 100;
 const QUICK_FILTER_IDS = new Set(["zero", "transfer", "conference"]);
 type FilterMode = "show" | "hide";
 
@@ -46,7 +47,6 @@ export function SearchPage() {
   const initialTimeRange = searchParams.get("t") || "24h";
 
   const [timeRange, setTimeRange] = useState(initialTimeRange);
-  const [limit, setLimit] = useState(100);
   const savedFilters = (() => {
     try {
       return JSON.parse(sessionStorage.getItem("cdr-filters") || "{}");
@@ -102,7 +102,8 @@ export function SearchPage() {
   }, [filterModes]);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const lastSearchRef = useRef<Record<string, string> | null>(null);
-  const { results, count, loading, error, search } = useSearch();
+  const { results, loading, loadingMore, hasMore, error, search, loadMore } =
+    useSearch();
   const { rules, add } = useLabelRules();
   const enabledRules = useMemo(() => rules.filter((r) => r.enabled), [rules]);
   const visibleLabelRules = useMemo(() => {
@@ -347,20 +348,20 @@ export function SearchPage() {
       setSearchParams(urlParams, { replace: true });
       const params: Record<string, string> = {
         last: timeRange,
-        limit: String(limit),
+        limit: String(PAGE_SIZE),
       };
       if (query) params.number = query;
       if (serverLabelIds) params.labelIds = serverLabelIds;
       lastSearchRef.current = params;
       search(params);
     },
-    [search, timeRange, limit, setSearchParams, serverLabelIds],
+    [search, timeRange, setSearchParams, serverLabelIds],
   );
 
   const handleAdvancedSearch = useCallback(
     (params: AdvancedSearchParams) => {
       setShowStarredOnly(false);
-      const clean: Record<string, string> = {};
+      const clean: Record<string, string> = { limit: String(PAGE_SIZE) };
       for (const [k, v] of Object.entries(params)) {
         if (v) clean[k] = v;
       }
@@ -371,31 +372,23 @@ export function SearchPage() {
     [search, serverLabelIds],
   );
 
+  // Fetches the next page via the hook's saved cursor and appends it —
+  // never re-runs the search with a bigger limit (see useSearch.ts and the
+  // backend's keyset-pagination comment for why that used to be unsafe).
   const handleLoadMore = useCallback(() => {
-    const newLimit = limit + 100;
-    setLimit(newLimit);
-    const params = { ...(lastSearchRef.current ?? {}), limit: String(newLimit) };
-    lastSearchRef.current = params;
-    search(params);
-  }, [limit, search]);
-
-  // Reset paging back to the default whenever the nav bar's "Search" link
-  // is clicked (a fresh navigation to this route, even without a path
-  // change, bumps location.key) or the server-side label selection
-  // changes (a new filtered view starts back at page 1).
-  useEffect(() => {
-    setLimit(100);
-  }, [location.key, serverLabelIds]);
+    loadMore(lastSearchRef.current ?? {});
+  }, [loadMore]);
 
   // Load calls on mount, when time range changes, on a fresh navigation
   // back to this route (location.key), and when the server-side label
   // selection changes — covers the nav bar's "Search" link no longer
-  // being a no-op when a search is already active.
+  // being a no-op when a search is already active. Each of these is a
+  // fresh first page; handleLoadMore is what appends further pages.
   useEffect(() => {
     if (showStarredOnly) return;
     const params: Record<string, string> = {
       last: timeRange,
-      limit: String(limit),
+      limit: String(PAGE_SIZE),
     };
     if (initialQuery) params.number = initialQuery;
     if (serverLabelIds) params.labelIds = serverLabelIds;
@@ -475,7 +468,8 @@ export function SearchPage() {
               <div className="flex items-center gap-3">
                 <p className="text-sm text-muted-foreground">
                   Showing {filteredResults.length} of{" "}
-                  {showStarredOnly ? starredResults.length : count} results
+                  {showStarredOnly ? starredResults.length : results.length}{" "}
+                  loaded results
                   {showStarredOnly && " (starred)"}
                 </p>
                 <Button
@@ -665,18 +659,19 @@ export function SearchPage() {
               />
             ))}
           </div>
-          {!showStarredOnly && limit > 100 && results.length < limit && (
+          {!showStarredOnly && !hasMore && (
             <p className="text-center text-sm text-muted-foreground py-2">
               No more results.
             </p>
           )}
-          {!showStarredOnly && results.length >= limit && (
+          {!showStarredOnly && hasMore && (
             <Button
               variant="outline"
               className="w-full"
               onClick={handleLoadMore}
+              disabled={loadingMore}
             >
-              Load more
+              {loadingMore ? "Loading…" : "Load more"}
             </Button>
           )}
         </div>

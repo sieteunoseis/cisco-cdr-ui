@@ -19,9 +19,11 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
 
 export function searchCdr(params: Record<string, string>) {
   const qs = new URLSearchParams(params).toString();
-  return apiFetch<{ count: number; results: any[] }>(
-    `/api/v1/cdr/search?${qs}`,
-  );
+  return apiFetch<{
+    count: number;
+    results: any[];
+    nextCursor: { beforeTime: string; beforePkid: string } | null;
+  }>(`/api/v1/cdr/search?${qs}`);
 }
 
 export function traceCdr(callId: string, callManagerId?: string) {
