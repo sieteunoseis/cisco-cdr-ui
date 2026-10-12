@@ -3,8 +3,8 @@
 ## Caller Management
 
 - [x] Caller ID lookup (CNAM via Twilio)
-- [ ] Add number to spam blacklist via Cisco CUCM API
-- [ ] Add number to spam whitelist via Cisco CUCM API
+- [ ] Add number to spam blacklist via Cisco CUCM API - FUTURE
+- [ ] Add number to spam whitelist via Cisco CUCM API - FUTURE
 
 ## Call Analysis
 
@@ -12,11 +12,11 @@
 - [x] SIP ladder diagram with columns and arrows
 - [x] Star/save calls from search and detail pages
 - [x] Filter starred calls
-- [ ] Export SIP ladder as image/PDF for tickets
-- [ ] Call flow diagram (visual path across CUCM nodes)
+- [ ] Export SIP ladder as image/PDF for tickets - FUTURE
+- [ ] Call flow diagram (visual path across CUCM nodes) - FUTURE
 - [ ] Compare two calls side-by-side
 - [ ] Annotation/notes on a call (e.g. "INC12345 — user reported static")
-- [ ] Export call detail to PDF for incident reports
+- [ ] Export call detail to PDF for incident reports - FUTURE
 
 ## Search & Filtering
 
@@ -35,7 +35,7 @@
 
 - [x] Codec in Quality card
 - [x] Quality alerts — flag calls with MOS below threshold — Quality Degradation alert type (MOS/jitter/latency/packet loss), scopable to a label.
-- [ ] Codec mismatch detection (orig vs dest codec differ)
+- [ ] Codec mismatch detection (orig vs dest codec differ) - Found 1 call in 19M calls. Not worth the effort to implement a rule for this. If we find more calls with this issue, we can revisit. - FUTURE
 - [ ] Dashboard view — call volume, failure rate, top destinations (last 24h)
 
 ## SQL
@@ -44,7 +44,7 @@
 - [x] Autocomplete for tables and columns
 - [x] Saved query reset button — removed when queries became shared (see below); resetting a team-visible resource with one click was a different risk than the old per-browser localStorage reset.
 - [x] Shared saved SQL queries (backend-stored, team-visible)
-- [ ] Translation Pattern matches?
+- [ ] Translation Pattern matches? - FUTURE
 
 ## Device Diagnostics
 
@@ -53,7 +53,7 @@
 - [x] Dynamic syslog buttons based on available log files
 - [x] Third-party phone detection (hide web buttons)
 - [ ] Link to phone page in CUCM admin (from device name)
-- [ ] JTAPI/CTI live call monitoring
+- [ ] JTAPI/CTI live call monitoring - FUTURE
 
 ## Infrastructure
 
@@ -62,11 +62,11 @@
 - [x] Docker Hub CI auth
 - [x] Skip Docker build for markdown changes
 - [ ] cisco-risport Docker container fix (issue #3)
-- [ ] Legacy DB support — query netdb02-1.ohsu.edu:19491/netinfo for historical CDR (2025-03-29 to 2026-03-25, 70M rows, timestamp format vs our epoch bigint)
+- [ ] Legacy DB support — query netdb02-1.ohsu.edu:19491/netinfo for historical CDR (2025-03-29 to 2026-03-25, 70M rows, timestamp format vs our epoch bigint) - FUTURE
 - [ ] Drag-and-drop SIP ladder column reordering
 
 # DN Map
-- [ ] Map DN to user (CUCM LDAP, AD, HR DB)? DeviceNumPlanMapEndUserMap? EndUserDeviceMap?
+- [ ] Map DN to user? DeviceNumPlanMapEndUserMap? EndUserDeviceMap?
 - [x] Device name to CUCM admin?
 - [x] Filters? Used/Unused? etc
 - [x] Count of calls per DN (last 24h, last 7d, last 30d)? Link to CDR records
@@ -86,4 +86,4 @@
 
 
 # Grafana Support
-- [ ] Grafana dashboard for call volume, failure rate, top destinations (last 24h). Could we do a prometheus page?
+- [x] Grafana dashboard for call volume, failure rate, top destinations (last 24h). Could we do a prometheus page?ad
