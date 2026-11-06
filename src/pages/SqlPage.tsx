@@ -11,8 +11,18 @@ export function SqlPage() {
   const [query, setQuery] = useState("");
   const [loadedQueryId, setLoadedQueryId] = useState<string | null>(null);
   const resolvedRef = useRef(query);
-  const { columns, rows, count, durationMs, loading, error, execute, cancel } =
-    useSqlQuery();
+  const {
+    columns,
+    rows,
+    count,
+    durationMs,
+    totalMs,
+    runId,
+    loading,
+    error,
+    execute,
+    cancel,
+  } = useSqlQuery();
   const {
     queries,
     error: savedQueriesError,
@@ -79,9 +89,7 @@ export function SqlPage() {
     <div className="flex gap-6">
       <div className="w-56 shrink-0">
         {savedQueriesError && (
-          <p className="text-xs text-destructive mb-2">
-            {savedQueriesError}
-          </p>
+          <p className="text-xs text-destructive mb-2">{savedQueriesError}</p>
         )}
         <SavedQueries
           queries={queries}
@@ -101,6 +109,7 @@ export function SqlPage() {
           onClear={handleClear}
           loadedQueryName={loadedQuery?.name}
           loading={loading}
+          runId={runId}
         />
         <SqlVariables query={query} onResolvedQuery={handleResolvedQuery} />
         <SqlResults
@@ -108,6 +117,7 @@ export function SqlPage() {
           rows={rows}
           count={count}
           durationMs={durationMs}
+          totalMs={totalMs}
           error={error}
         />
       </div>

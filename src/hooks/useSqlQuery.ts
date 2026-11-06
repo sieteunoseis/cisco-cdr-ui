@@ -6,6 +6,8 @@ interface SqlQueryState {
   rows: any[];
   count: number;
   durationMs: number;
+  totalMs: number;
+  runId: number;
   loading: boolean;
   error: string | null;
 }
@@ -16,6 +18,8 @@ export function useSqlQuery() {
     rows: [],
     count: 0,
     durationMs: 0,
+    totalMs: 0,
+    runId: 0,
     loading: false,
     error: null,
   });
@@ -25,17 +29,22 @@ export function useSqlQuery() {
     controllerRef.current?.abort();
     const controller = new AbortController();
     controllerRef.current = controller;
-    setState((s) => ({ ...s, loading: true, error: null }));
+    // runId changes on every run so the elapsed timer restarts even when a
+    // new run replaces one that was still loading.
+    setState((s) => ({ ...s, loading: true, error: null, runId: s.runId + 1 }));
+    const started = performance.now();
     try {
       const data = await executeSql(query, controller.signal);
-      setState({
+      setState((s) => ({
+        ...s,
         columns: data.columns,
         rows: data.rows,
         count: data.count,
         durationMs: data.duration_ms,
+        totalMs: Math.round(performance.now() - started),
         loading: false,
         error: null,
-      });
+      }));
     } catch (err: any) {
       // A user-initiated cancel rejects with AbortError — leave whatever
       // results were already showing in place rather than surfacing it as
@@ -61,14 +70,16 @@ export function useSqlQuery() {
 
   const clear = useCallback(() => {
     controllerRef.current?.abort();
-    setState({
+    setState((s) => ({
       columns: [],
       rows: [],
       count: 0,
       durationMs: 0,
+      totalMs: 0,
+      runId: s.runId,
       loading: false,
       error: null,
-    });
+    }));
   }, []);
 
   return { ...state, execute, cancel, clear };

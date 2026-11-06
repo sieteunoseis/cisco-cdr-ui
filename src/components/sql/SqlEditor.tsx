@@ -15,6 +15,7 @@ interface SqlEditorProps {
   onClear?: () => void;
   loadedQueryName?: string | null;
   loading?: boolean;
+  runId?: number;
 }
 
 type SchemaMap = Record<string, { name: string; type: string }[]>;
@@ -24,7 +25,7 @@ const QUERY_TIMEOUT_S = 30;
 
 // Postgres can't report progress for a SELECT, so this shows elapsed time
 // against the server's timeout rather than a real percent-complete.
-function useElapsed(running?: boolean) {
+function useElapsed(running?: boolean, runId?: number) {
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
     if (!running) return;
@@ -36,7 +37,7 @@ function useElapsed(running?: boolean) {
       clearTimeout(first);
       clearInterval(id);
     };
-  }, [running]);
+  }, [running, runId]);
   return running ? elapsed : 0;
 }
 
@@ -50,11 +51,12 @@ export function SqlEditor({
   onClear,
   loadedQueryName,
   loading,
+  runId,
 }: SqlEditorProps) {
   const editorRef = useRef<any>(null);
   const { theme } = useTheme();
   const [schema, setSchema] = useState<SchemaMap | null>(null);
-  const elapsed = useElapsed(loading);
+  const elapsed = useElapsed(loading, runId);
   const pct = Math.min(100, (elapsed / QUERY_TIMEOUT_S) * 100);
 
   // Fetch schema once for autocomplete
@@ -167,7 +169,11 @@ export function SqlEditor({
         </Button>
         <span className="text-xs text-muted-foreground ml-auto">
           {loading
-            ? `Running… ${elapsed.toFixed(1)}s / ${QUERY_TIMEOUT_S}s limit`
+            ? elapsed <= QUERY_TIMEOUT_S
+              ? `Running… ${elapsed.toFixed(1)}s / ${QUERY_TIMEOUT_S}s query limit`
+              : // The 30s limit is database time only; past it, the query has
+                // finished or been cancelled and we're waiting on the network.
+                `Receiving results… ${elapsed.toFixed(1)}s (query limit is ${QUERY_TIMEOUT_S}s; download time isn't limited)`
             : "Ctrl+Enter to run"}
         </span>
       </div>

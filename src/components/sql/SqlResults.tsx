@@ -30,6 +30,7 @@ interface SqlResultsProps {
   rows: any[];
   count: number;
   durationMs: number;
+  totalMs?: number;
   error: string | null;
 }
 
@@ -38,6 +39,7 @@ export function SqlResults({
   rows,
   count,
   durationMs,
+  totalMs,
   error,
 }: SqlResultsProps) {
   const [sortCol, setSortCol] = useState<string | null>(null);
@@ -95,7 +97,9 @@ export function SqlResults({
 
   if (rows.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">0 rows in {durationMs}ms</p>
+      <p className="text-sm text-muted-foreground">
+        0 rows · {formatTiming(durationMs, totalMs)}
+      </p>
     );
   }
 
@@ -103,7 +107,7 @@ export function SqlResults({
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          {count} rows in {durationMs}ms
+          {count} rows · {formatTiming(durationMs, totalMs)}
         </p>
         <Button variant="outline" size="sm" onClick={exportCsv}>
           Export CSV
@@ -153,4 +157,13 @@ export function SqlResults({
       </div>
     </div>
   );
+}
+
+// "query" = time Postgres spent (server-reported); "total" = browser round
+// trip including network/download. A big gap means the network was slow.
+function formatTiming(queryMs: number, totalMs?: number) {
+  const fmt = (ms: number) =>
+    ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`;
+  const q = `${fmt(queryMs)} query`;
+  return totalMs ? `${q} · ${fmt(totalMs)} total` : q;
 }
