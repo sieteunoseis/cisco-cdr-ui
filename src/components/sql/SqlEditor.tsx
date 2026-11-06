@@ -19,6 +19,27 @@ interface SqlEditorProps {
 
 type SchemaMap = Record<string, { name: string; type: string }[]>;
 
+// Must match QUERY_TIMEOUT_MS in cisco-cdr-processor src/api/routes/sql.js
+const QUERY_TIMEOUT_S = 30;
+
+// Postgres can't report progress for a SELECT, so this shows elapsed time
+// against the server's timeout rather than a real percent-complete.
+function useElapsed(running?: boolean) {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    if (!running) return;
+    const start = Date.now();
+    const tick = () => setElapsed((Date.now() - start) / 1000);
+    const first = setTimeout(tick, 0);
+    const id = setInterval(tick, 100);
+    return () => {
+      clearTimeout(first);
+      clearInterval(id);
+    };
+  }, [running]);
+  return running ? elapsed : 0;
+}
+
 export function SqlEditor({
   value,
   onChange,
@@ -33,6 +54,8 @@ export function SqlEditor({
   const editorRef = useRef<any>(null);
   const { theme } = useTheme();
   const [schema, setSchema] = useState<SchemaMap | null>(null);
+  const elapsed = useElapsed(loading);
+  const pct = Math.min(100, (elapsed / QUERY_TIMEOUT_S) * 100);
 
   // Fetch schema once for autocomplete
   useEffect(() => {
@@ -88,10 +111,19 @@ export function SqlEditor({
             renderLineHighlight: "none",
             quickSuggestions: true,
             suggestOnTriggerCharacters: true,
-            readOnly: loading,
           }}
         />
       </div>
+      {loading && (
+        <div className="h-1 w-full rounded bg-muted overflow-hidden">
+          <div
+            className={`h-full transition-[width] duration-100 ${
+              pct > 80 ? "bg-destructive" : "bg-primary"
+            }`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      )}
       <div className="flex items-center gap-2">
         {loading ? (
           <Button variant="destructive" onClick={onCancel} disabled={!onCancel}>
@@ -135,7 +167,7 @@ export function SqlEditor({
         </Button>
         <span className="text-xs text-muted-foreground ml-auto">
           {loading
-            ? "Running — editor locked until this finishes or is cancelled"
+            ? `Running… ${elapsed.toFixed(1)}s / ${QUERY_TIMEOUT_S}s limit`
             : "Ctrl+Enter to run"}
         </span>
       </div>
