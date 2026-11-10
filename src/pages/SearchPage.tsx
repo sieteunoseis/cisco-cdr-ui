@@ -102,6 +102,13 @@ export function SearchPage() {
   }, [filterModes]);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const lastSearchRef = useRef<Record<string, string> | null>(null);
+  // setSearchParams (used to sync a search into the URL) is itself a
+  // navigation, so it changes location.key and would trip the reset
+  // effect below — which re-runs the plain time-range search and, via the
+  // requestId guard in useSearch, silently discards the search we just
+  // issued (e.g. Advanced Search's Called Number). Searches that sync the
+  // URL set this so the reset effect ignores that one self-inflicted key.
+  const selfNavRef = useRef(false);
   const { results, loading, loadingMore, hasMore, error, search, loadMore } =
     useSearch();
   const { rules, add } = useLabelRules();
@@ -345,6 +352,7 @@ export function SearchPage() {
       setShowStarredOnly(false);
       const urlParams: Record<string, string> = { t: timeRange };
       if (query) urlParams.q = query;
+      selfNavRef.current = true;
       setSearchParams(urlParams, { replace: true });
       const params: Record<string, string> = {
         last: timeRange,
@@ -366,6 +374,8 @@ export function SearchPage() {
         if (v) clean[k] = v;
       }
       if (serverLabelIds) clean.labelIds = serverLabelIds;
+      // AdvancedSearch has just synced its fields into the URL.
+      selfNavRef.current = true;
       lastSearchRef.current = clean;
       search(clean);
     },
@@ -384,7 +394,24 @@ export function SearchPage() {
   // selection changes — covers the nav bar's "Search" link no longer
   // being a no-op when a search is already active. Each of these is a
   // fresh first page; handleLoadMore is what appends further pages.
+  const prevKeyRef = useRef(location.key);
+  const mountedRef = useRef(false);
   useEffect(() => {
+    const keyChanged = prevKeyRef.current !== location.key;
+    prevKeyRef.current = location.key;
+    const isMount = !mountedRef.current;
+    mountedRef.current = true;
+    const selfNav = selfNavRef.current;
+    selfNavRef.current = false;
+    // Our own URL sync — the search it belongs to is already in flight.
+    if (keyChanged && selfNav) return;
+    // Deep link with advanced params (?called=…): AdvancedSearch's mount
+    // effect (children run first) has already searched with them.
+    if (
+      isMount &&
+      ["calling", "called", "device", "start"].some((k) => searchParams.get(k))
+    )
+      return;
     if (showStarredOnly) return;
     const params: Record<string, string> = {
       last: timeRange,
