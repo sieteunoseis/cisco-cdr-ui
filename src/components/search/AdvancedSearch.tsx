@@ -99,6 +99,8 @@ export function AdvancedSearch({
     if (cause.trim()) urlParams.cause = cause.trim();
     if (start) urlParams.start = new Date(start).toISOString();
     if (end) urlParams.end = new Date(end).toISOString();
+    // Keep the time range in shared links so they reopen on the same window.
+    if (!start && !end) urlParams.t = defaultLast;
     setSearchParams(urlParams, { replace: true });
 
     onSearch(params);

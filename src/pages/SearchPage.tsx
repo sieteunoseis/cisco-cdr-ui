@@ -407,12 +407,32 @@ export function SearchPage() {
     if (keyChanged && selfNav) return;
     // Deep link with advanced params (?called=…): AdvancedSearch's mount
     // effect (children run first) has already searched with them.
-    if (
-      isMount &&
-      ["calling", "called", "device", "start"].some((k) => searchParams.get(k))
-    )
-      return;
+    const advKeys = ["calling", "called", "device", "cause", "start", "end"];
+    const hasAdvanced = advKeys.some((k) => searchParams.get(k));
+    if (isMount && hasAdvanced) return;
     if (showStarredOnly) return;
+    // An advanced search is active (its fields live in the URL): changing
+    // the time range or label chips re-runs it with the new range instead
+    // of falling back to the plain recent-calls search. Explicit start/end
+    // win over the range, matching AdvancedSearch's own submit logic.
+    if (hasAdvanced) {
+      const adv: Record<string, string> = { limit: String(PAGE_SIZE) };
+      for (const k of advKeys) {
+        const v = searchParams.get(k);
+        if (v) adv[k] = v;
+      }
+      if (!adv.start && !adv.end) adv.last = timeRange;
+      if (serverLabelIds) adv.labelIds = serverLabelIds;
+      if (searchParams.get("t") !== timeRange) {
+        const next = new URLSearchParams(searchParams);
+        next.set("t", timeRange);
+        selfNavRef.current = true;
+        setSearchParams(next, { replace: true });
+      }
+      lastSearchRef.current = adv;
+      search(adv);
+      return;
+    }
     const params: Record<string, string> = {
       last: timeRange,
       limit: String(PAGE_SIZE),
